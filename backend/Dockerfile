@@ -6,14 +6,14 @@ RUN apt-get update \
 	&& apt-get install -y --no-install-recommends openssl ca-certificates \
 	&& rm -rf /var/lib/apt/lists/*
 
-COPY backend/prisma ./prisma
-COPY backend/prisma.config.ts ./
-COPY backend/package*.json ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+COPY package*.json ./
 RUN npm ci
 
-COPY backend/nest-cli.json ./
-COPY backend/tsconfig*.json ./
-COPY backend/src ./src
+COPY nest-cli.json ./
+COPY tsconfig*.json ./
+COPY src ./src
 
 RUN npm run build
 
