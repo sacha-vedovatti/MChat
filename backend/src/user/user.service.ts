@@ -10,13 +10,13 @@ import { PrismaService } from 'src/prisma.service';
 
 type CreateUserInput = {
     email: string;
-    name?: string;
+    username: string;
     password: string;
 };
 
 type UpdateUserInput = {
     email?: string;
-    name?: string;
+    username?: string;
     password?: string;
 };
 
@@ -26,16 +26,16 @@ export class UserService {
 
     async getAll() {
         const users = await this.prisma.user.findMany({
-            select: { id: true, email: true, name: true }
+            select: { id: true, email: true, username: true }
         });
 
         return users;
     }
 
-    async getUser(userId: number) {
+    async getUser(userId: string) {
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
-            select: { id: true, email: true, name: true }
+            select: { id: true, email: true, username: true }
         });
 
         return user;
@@ -45,33 +45,33 @@ export class UserService {
         const user = await this.prisma.user.create({
             data: {
                 email: input.email,
-                name: input.name,
+                username: input.username,
                 password: input.password
             },
-            select: { id: true, email: true, name: true }
+            select: { id: true, email: true, username: true }
         });
 
         return user;
     }
 
-    async updateUser(userId: number, input: UpdateUserInput) {
+    async updateUser(userId: string, input: UpdateUserInput) {
         const user = await this.prisma.user.update({
             where: { id: userId },
             data: {
                 email: input.email,
-                name: input.name,
+                username: input.username,
                 password: input.password
             },
-            select: { id: true, email: true, name: true }
+            select: { id: true, email: true, username: true }
         });
 
         return user;
     }
 
-    async deleteUser(userId: number) {
+    async deleteUser(userId: string) {
         const user = await this.prisma.user.delete({
             where: { id: userId },
-            select: { id: true, email: true, name: true }
+            select: { id: true, email: true, username: true }
         });
 
         return user;

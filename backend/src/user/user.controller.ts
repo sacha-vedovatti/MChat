@@ -5,18 +5,18 @@
 ** User Controller
 */
 
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, ParseUUIDPipe, Post, Put } from '@nestjs/common';
 import { UserService } from './user.service';
 
 type CreateUserBody = {
     email: string;
-    name?: string;
+    username: string;
     password: string;
 };
 
 type UpdateUserBody = {
     email?: string;
-    name?: string;
+    username?: string;
     password?: string;
 };
 
@@ -31,8 +31,8 @@ export class UserController {
     }
 
     /// GET /users/{userId}
-    @Get('/:userId')
-    getUser(@Param('userId', ParseIntPipe) userId: number) {
+    @Get(':userId')
+    getUser(@Param('userId', ParseUUIDPipe) userId: string) {
         return this.userService.getUser(userId);
     }
 
@@ -43,17 +43,14 @@ export class UserController {
     }
 
     /// PUT /users/{userId}
-    @Put('/:userId')
-    updateUser(
-        @Param('userId', ParseIntPipe) userId: number,
-        @Body() body: UpdateUserBody,
-    ) {
+    @Put(':userId')
+    updateUser(@Param('userId', ParseUUIDPipe) userId: string, @Body() body: UpdateUserBody) {
         return this.userService.updateUser(userId, body);
     }
 
     /// DELETE /users/{userId}
-    @Delete('/:userId')
-    deleteUser(@Param('userId', ParseIntPipe) userId: number) {
+    @Delete(':userId')
+    deleteUser(@Param('userId', ParseUUIDPipe) userId: string) {
         return this.userService.deleteUser(userId);
     }
 }

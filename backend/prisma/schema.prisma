@@ -7,8 +7,47 @@ datasource db {
 }
 
 model User {
-  id    Int     @default(autoincrement()) @id
-  email String  @unique
-  name  String?
-  password String
+  id           String        @id @default(uuid())
+  email        String        @unique
+  username     String
+  password     String
+  avatar_url   String?
+  messages     Message[]
+  participants Participant[]
+  created_at   DateTime      @default(now())
+}
+
+model Channel {
+  id           String        @id @default(uuid())
+  title        String?
+  is_group     Boolean       @default(false)
+  created_at   DateTime      @default(now())
+  messages     Message[]
+  participants Participant[]
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  channel_id String
+  sender_id  String
+  content    String
+  created_at DateTime @default(now())
+
+  channel Channel @relation(fields: [channel_id], references: [id], onDelete: Cascade)
+  sender  User    @relation(fields: [sender_id], references: [id], onDelete: Cascade)
+
+  @@index([channel_id])
+  @@index([sender_id])
+}
+
+model Participant {
+  channel_id String
+  user_id    String
+  joined_at  DateTime @default(now())
+
+  channel Channel @relation(fields: [channel_id], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@id([channel_id, user_id])
+  @@index([user_id])
 }
