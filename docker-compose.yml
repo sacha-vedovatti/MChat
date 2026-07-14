@@ -26,7 +26,6 @@ services:
         condition: service_healthy
     env_file:
       - path: ./backend/.env
-        required: false
     ports:
       - "3000:3000"
 

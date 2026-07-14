@@ -17,6 +17,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Create environnement
+        run: |
+          mkdir -p backend
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > backend/.env
+          echo "JWT_SECRET=secret" >> backend/.env
+          echo "PORT=3000" >> backend/.env
+
       - name: Build
         run: docker compose up -d --build
 
