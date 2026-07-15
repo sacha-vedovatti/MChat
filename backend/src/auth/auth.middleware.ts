@@ -7,13 +7,24 @@
 
 import { Injectable, NestMiddleware, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { PrismaService } from 'src/prisma.service';
 import { Request, Response, NextFunction } from 'express'
+
+type RequestWithUser = Request & {
+  user?: {
+    id: string;
+    role: string;
+  };
+}
 
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
-  constructor (private authService: AuthService) {}
+  constructor (
+    private authService: AuthService,
+    private prisma: PrismaService
+  ) {}
 
-  async use(req: Request, res: Response, next: NextFunction) {
+  async use(req: RequestWithUser, res: Response, next: NextFunction) {
     const auth_header = req.headers['authorization'];
     if (!auth_header)
       throw new UnauthorizedException('Authorization header is missing');
@@ -24,8 +35,11 @@ export class AuthMiddleware implements NestMiddleware {
 
     try {
       const payload = await this.authService.validate_token(token);
+      const user = await this.prisma.user.findUnique({ where: { id: payload.id }, select: { id: true, role: true }});
 
-      req['user'] = payload;
+      if (!user)
+        throw new UnauthorizedException('Invalid or expired token');
+      req['user'] = user;
       next();
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired token');

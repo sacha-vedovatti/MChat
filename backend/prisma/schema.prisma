@@ -6,12 +6,18 @@ datasource db {
   provider = "postgresql"
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
 model User {
   id           String        @id @default(uuid())
   email        String        @unique
   username     String
   password     String
   avatar_url   String?
+  role         UserRole      @default(USER)
   messages     Message[]
   participants Participant[]
   created_at   DateTime      @default(now())
