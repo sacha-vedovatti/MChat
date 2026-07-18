@@ -11,6 +11,23 @@ enum UserRole {
   ADMIN
 }
 
+enum ServerPermissions {
+  OWNER
+  ADMIN
+  VIEW_CHANNEL
+  SEND_MESSAGES
+  MANAGE_MESSAGES
+  MANAGE_CHANNELS
+  MANAGE_SERVER
+  MANAGE_ROLES
+  INVITE_MEMBERS
+  KICK_MEMBERS
+  BAN_MEMBERS
+  ADD_REACTIONS
+  USE_EMOJIS
+  ATTACH_FILES
+}
+
 model User {
   id           String        @id @default(uuid())
   email        String        @unique
@@ -19,17 +36,54 @@ model User {
   avatar_url   String?
   role         UserRole      @default(USER)
   messages     Message[]
-  participants Participant[]
+  users        ServerUser[]
+  owned_servers Server[]
   created_at   DateTime      @default(now())
+}
+
+model Server {
+  id           String        @id @default(uuid())
+  owner_id     String
+  name         String
+  created_at   DateTime      @default(now())
+  channels     Channel[]
+  participants ServerUser[]
+  roles        ServerRole[]
+
+  owner User @relation(fields: [owner_id], references: [id], onDelete: Cascade)
+
+  @@unique([owner_id, id])
+  @@index([owner_id])
+}
+
+model ServerRole {
+  id           Int               @id @default(autoincrement())
+  server_id    String
+  name         String
+  permissions  ServerPermissions[]
+  is_default   Boolean           @default(false)
+  position     Int               @default(0)
+  created_at   DateTime          @default(now())
+
+  server       Server            @relation(fields: [server_id], references: [id], onDelete: Cascade)
+  users        ServerUser[]
+
+  @@unique([server_id, name])
+  @@index([server_id])
+  @@index([server_id, position])
 }
 
 model Channel {
   id           String        @id @default(uuid())
-  title        String?
-  is_group     Boolean       @default(false)
+  server_id    String
+  name         String
+  description  String?
   created_at   DateTime      @default(now())
   messages     Message[]
-  participants Participant[]
+
+  server Server @relation(fields: [server_id], references: [id], onDelete: Cascade)
+
+  @@index([server_id])
 }
 
 model Message {
@@ -46,14 +100,17 @@ model Message {
   @@index([sender_id])
 }
 
-model Participant {
-  channel_id String
+model ServerUser {
+  server_id  String
   user_id    String
+  role_id    Int?
   joined_at  DateTime @default(now())
 
-  channel Channel @relation(fields: [channel_id], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  server  Server      @relation(fields: [server_id], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role    ServerRole?  @relation(fields: [role_id], references: [id], onDelete: Restrict)
 
-  @@id([channel_id, user_id])
+  @@id([server_id, user_id])
   @@index([user_id])
+  @@index([role_id])
 }
