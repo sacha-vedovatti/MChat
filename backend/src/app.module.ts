@@ -12,14 +12,15 @@ import { UserModule } from './user/user.module';
 import { PrismaService } from './prisma.service';
 import { AuthModule } from './auth/auth.module';
 import { AuthMiddleware } from './auth/auth.middleware';
+import { ServerModule } from './server/server.module';
 
 @Module({
-  imports: [UserModule, AuthModule],
+  imports: [UserModule, AuthModule, ServerModule],
   controllers: [AppController],
   providers: [AppService, PrismaService],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(AuthMiddleware).forRoutes('users');
+    consumer.apply(AuthMiddleware).forRoutes('users', 'user', 'server', 'servers');
   }
 }
