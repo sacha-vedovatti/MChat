@@ -5,7 +5,7 @@
 ** User Service
 */
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 
 type CreateUserInput = {
@@ -40,6 +40,8 @@ export class UserService {
             select: { id: true, email: true, username: true, avatar_url: true }
         });
 
+        if (!user)
+            throw new NotFoundException('User not found.');
         return user;
     }
 
@@ -77,6 +79,8 @@ export class UserService {
             select: { id: true, email: true, username: true, avatar_url: true }
         });
 
+        if (!user)
+            throw new NotFoundException('User not found.');
         return user;
     }
 
@@ -86,6 +90,8 @@ export class UserService {
             select: { id: true, email: true, username: true, avatar_url: true }
         });
 
+        if (!user)
+            throw new NotFoundException('User not found.');
         return user;
     }
 }

@@ -30,7 +30,7 @@ type RequestWithUser = Request & {
     };
 };
 
-@Controller('users')
+@Controller(['user', 'users'])
 export class UserController {
     constructor(private readonly userService: UserService) { }
 
