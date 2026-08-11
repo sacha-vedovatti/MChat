@@ -1,3 +1,10 @@
+//
+// EPITECH PROJECT, 2026
+// MChat
+// File description:
+// Error middleware
+//
+
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -46,7 +53,7 @@ impl IntoResponse for AppError {
             AppError::NotFound(message) => (StatusCode::NOT_FOUND, message),
             AppError::Conflict(message) => (StatusCode::CONFLICT, message),
             AppError::BadRequest(message) => (StatusCode::BAD_REQUEST, message),
-            AppError::Internal(message) => (StatusCode::INTERNAL_SERVER_ERROR, message),
+            AppError::Internal(message) => (StatusCode::INTERNAL_SERVER_ERROR, message)
         };
 
         (status, Json(ErrorBody { error })).into_response()

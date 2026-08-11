@@ -1,9 +1,17 @@
+//
+// EPITECH PROJECT, 2026
+// MChat
+// File description:
+// Authentication routes
+//
+
 use crate::{
     app_state::AppState,
     auth::{generate_token, hash_password, verify_password},
     error::{AppError, Result},
     models::UserRecord,
 };
+
 use axum::{extract::Extension, routing::post, Json, Router};
 use serde::{Deserialize, Serialize};
 
@@ -37,15 +45,11 @@ pub fn router() -> Router<AppState> {
         .route("/auth/login", post(login))
 }
 
-async fn register(
-    Extension(state): Extension<AppState>,
-    Json(body): Json<RegisterBody>,
-) -> Result<Json<TokenResponse>> {
+async fn register(Extension(state): Extension<AppState>, Json(body): Json<RegisterBody>) -> Result<Json<TokenResponse>> {
     let existing = sqlx::query_scalar::<_, String>(r#"SELECT id FROM "User" WHERE email = $1"#)
         .bind(&body.email)
         .fetch_optional(&state.pool)
         .await?;
-
     if existing.is_some() {
         return Err(AppError::Conflict("user already exists".to_string()));
     }
@@ -71,10 +75,7 @@ async fn register(
     }))
 }
 
-async fn login(
-    Extension(state): Extension<AppState>,
-    Json(body): Json<LoginBody>,
-) -> Result<Json<LoginResponse>> {
+async fn login(Extension(state): Extension<AppState>, Json(body): Json<LoginBody>) -> Result<Json<LoginResponse>> {
     let user = sqlx::query_as::<_, UserRecord>(
         r#"
         SELECT id, email, username, password, avatar_url, role, created_at

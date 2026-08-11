@@ -54,16 +54,13 @@ impl FromRequestParts<AppState> for CurrentUser {
 }
 
 fn bearer_token(parts: &Parts) -> Result<String> {
-    let header = parts
-        .headers
+    let header = parts.headers
         .get(AUTHORIZATION)
         .ok_or_else(|| AppError::Unauthorized("missing authorization header".to_string()))?;
-    let value = header
-        .to_str()
+    let value = header.to_str()
         .map_err(|_| AppError::Unauthorized("invalid authorization header".to_string()))?;
 
-    value
-        .strip_prefix("Bearer ")
+    value.strip_prefix("Bearer ")
         .map(|token| token.trim().to_string())
         .filter(|token| !token.is_empty())
         .ok_or_else(|| AppError::Unauthorized("missing bearer token".to_string()))
@@ -81,14 +78,10 @@ pub fn generate_token(user_id: &str, jwt_secret: &str) -> Result<String> {
     let expiration = Utc::now() + Duration::hours(1);
     let claims = Claims {
         sub: user_id.to_string(),
-        exp: expiration.timestamp() as usize,
+        exp: expiration.timestamp() as usize
     };
 
-    Ok(encode(
-        &Header::default(),
-        &claims,
-        &EncodingKey::from_secret(jwt_secret.as_bytes()),
-    )?)
+    Ok(encode(&Header::default(), &claims, &EncodingKey::from_secret(jwt_secret.as_bytes()))?)
 }
 
 pub async fn load_public_user(state: &AppState, user_id: &str) -> Result<PublicUser> {

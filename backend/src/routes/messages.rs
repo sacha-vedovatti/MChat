@@ -1,3 +1,10 @@
+//
+// EPITECH PROJECT, 2026
+// MChat
+// File description:
+// Messages routes
+//
+
 use crate::{
     app_state::AppState,
     auth::CurrentUser,
@@ -5,6 +12,7 @@ use crate::{
     models::{MessageRecord, MessageResponse, ServerPermission},
     permissions::{load_channel_server_id, load_server_access},
 };
+
 use axum::{extract::{Extension, Path, Query}, routing::{delete, get}, Json, Router};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -34,16 +42,11 @@ pub fn router() -> Router<AppState> {
         .route("/messages/{message_id}", delete(delete_message))
 }
 
-async fn get_messages(
-    Extension(state): Extension<AppState>,
-    user: CurrentUser,
-    Path(channel_id): Path<String>,
-    Query(query): Query<PaginationQuery>,
-) -> Result<Json<MessagePageResponse>> {
+async fn get_messages(Extension(state): Extension<AppState>, user: CurrentUser, Path(channel_id): Path<String>, Query(query): Query<PaginationQuery>) -> Result<Json<MessagePageResponse>> {
     validate_uuid(&channel_id)?;
+
     let server_id = load_channel_server_id(&state, &channel_id).await?;
     let access = load_server_access(&state, &server_id, &user.id).await?;
-
     if !access.can(ServerPermission::VIEW_CHANNEL) {
         return Err(AppError::Forbidden("view channel permission required".to_string()));
     }
@@ -51,7 +54,6 @@ async fn get_messages(
     let page = query.page.unwrap_or(1).max(1);
     let limit = query.limit.unwrap_or(50).clamp(1, 200);
     let offset = (page - 1) * limit;
-
     let total = sqlx::query_scalar::<_, i64>(
         r#"
         SELECT COUNT(*)
@@ -82,20 +84,15 @@ async fn get_messages(
         items: messages.into_iter().map(MessageResponse::from).collect(),
         page,
         limit,
-        total,
+        total
     }))
 }
 
-async fn create_message(
-    Extension(state): Extension<AppState>,
-    user: CurrentUser,
-    Path(channel_id): Path<String>,
-    Json(body): Json<CreateMessageBody>,
-) -> Result<Json<MessageResponse>> {
+async fn create_message(Extension(state): Extension<AppState>, user: CurrentUser, Path(channel_id): Path<String>, Json(body): Json<CreateMessageBody>) -> Result<Json<MessageResponse>> {
     validate_uuid(&channel_id)?;
+
     let server_id = load_channel_server_id(&state, &channel_id).await?;
     let access = load_server_access(&state, &server_id, &user.id).await?;
-
     if !access.can(ServerPermission::SEND_MESSAGES) {
         return Err(AppError::Forbidden("send messages permission required".to_string()));
     }
@@ -117,12 +114,9 @@ async fn create_message(
     Ok(Json(MessageResponse::from(message)))
 }
 
-async fn delete_message(
-    Extension(state): Extension<AppState>,
-    user: CurrentUser,
-    Path(message_id): Path<String>,
-) -> Result<Json<MessageResponse>> {
+async fn delete_message(Extension(state): Extension<AppState>, user: CurrentUser, Path(message_id): Path<String>) -> Result<Json<MessageResponse>> {
     validate_uuid(&message_id)?;
+
     let message = sqlx::query_as::<_, MessageRecord>(
         r#"
         SELECT id, channel_id, sender_id, content, created_at
@@ -136,7 +130,6 @@ async fn delete_message(
 
     let server_id = load_channel_server_id(&state, &message.channel_id).await?;
     let access = load_server_access(&state, &server_id, &user.id).await?;
-
     if message.sender_id != user.id && !access.can(ServerPermission::MANAGE_MESSAGES) {
         return Err(AppError::Forbidden("cannot delete this message".to_string()));
     }

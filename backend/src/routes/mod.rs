@@ -1,3 +1,10 @@
+//
+// EPITECH PROJECT, 2026
+// MChat
+// File description:
+// Routes module
+//
+
 use crate::app_state::AppState;
 use axum::Router;
 

@@ -1,3 +1,10 @@
+//
+// EPITECH PROJECT, 2026
+// MChat
+// File description:
+// Channel routes
+//
+
 use crate::{
     app_state::AppState,
     auth::CurrentUser,
@@ -5,6 +12,7 @@ use crate::{
     models::{ChannelRecord, ServerPermission},
     permissions::{load_channel_server_id, load_server_access},
 };
+
 use axum::{extract::{Extension, Path}, routing::put, Json, Router};
 use serde::Deserialize;
 use uuid::Uuid;
@@ -21,16 +29,11 @@ pub fn router() -> Router<AppState> {
         .route("/channel/{channel_id}", put(update_channel).delete(delete_channel))
 }
 
-async fn update_channel(
-    Extension(state): Extension<AppState>,
-    user: CurrentUser,
-    Path(channel_id): Path<String>,
-    Json(body): Json<UpdateChannelBody>,
-) -> Result<Json<ChannelRecord>> {
+async fn update_channel(Extension(state): Extension<AppState>, user: CurrentUser, Path(channel_id): Path<String>, Json(body): Json<UpdateChannelBody>) -> Result<Json<ChannelRecord>> {
     validate_uuid(&channel_id)?;
+
     let server_id = load_channel_server_id(&state, &channel_id).await?;
     let access = load_server_access(&state, &server_id, &user.id).await?;
-
     if !access.can(ServerPermission::MANAGE_CHANNELS) {
         return Err(AppError::Forbidden("manage channels permission required".to_string()));
     }
@@ -54,15 +57,11 @@ async fn update_channel(
     Ok(Json(channel))
 }
 
-async fn delete_channel(
-    Extension(state): Extension<AppState>,
-    user: CurrentUser,
-    Path(channel_id): Path<String>,
-) -> Result<Json<ChannelRecord>> {
+async fn delete_channel(Extension(state): Extension<AppState>, user: CurrentUser, Path(channel_id): Path<String>) -> Result<Json<ChannelRecord>> {
     validate_uuid(&channel_id)?;
+
     let server_id = load_channel_server_id(&state, &channel_id).await?;
     let access = load_server_access(&state, &server_id, &user.id).await?;
-
     if !access.can(ServerPermission::MANAGE_CHANNELS) {
         return Err(AppError::Forbidden("manage channels permission required".to_string()));
     }

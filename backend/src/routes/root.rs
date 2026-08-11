@@ -1,3 +1,10 @@
+//
+// EPITECH PROJECT, 2026
+// MChat
+// File description:
+// Basic routes
+//
+
 use crate::app_state::AppState;
 use axum::{response::IntoResponse, routing::get, Router};
 

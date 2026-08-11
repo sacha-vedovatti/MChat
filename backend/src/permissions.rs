@@ -10,6 +10,7 @@ use crate::{
     error::{AppError, Result},
     models::{ServerPermission, ServerRoleRecord, ServerSummary},
 };
+
 use sqlx::FromRow;
 
 #[derive(Debug, Clone, FromRow)]
@@ -19,7 +20,7 @@ pub struct ServerAccessRow {
     pub name: String,
     pub created_at: chrono::NaiveDateTime,
     pub member_role_id: Option<i32>,
-    pub permissions: Option<Vec<String>>,
+    pub permissions: Option<Vec<String>>
 }
 
 #[derive(Debug, Clone)]
@@ -27,7 +28,7 @@ pub struct ServerAccess {
     pub server: ServerSummary,
     pub member_role_id: Option<i32>,
     pub permissions: Vec<String>,
-    pub is_owner: bool,
+    pub is_owner: bool
 }
 
 impl ServerAccess {
@@ -47,11 +48,7 @@ pub fn can_user_admin_all(role_permissions: &[String], required: ServerPermissio
         || role_permissions.iter().any(|permission| permission == required)
 }
 
-pub async fn load_server_access(
-    state: &AppState,
-    server_id: &str,
-    user_id: &str,
-) -> Result<ServerAccess> {
+pub async fn load_server_access(state: &AppState, server_id: &str, user_id: &str) -> Result<ServerAccess> {
     let row = sqlx::query_as::<_, ServerAccessRow>(
         r#"
         SELECT
@@ -80,18 +77,18 @@ pub async fn load_server_access(
             id: row.id.clone(),
             owner_id: row.owner_id.clone(),
             name: row.name,
-            created_at: row.created_at,
+            created_at: row.created_at
         },
         member_role_id: row.member_role_id,
         permissions: row.permissions.unwrap_or_default(),
-        is_owner: row.owner_id == user_id,
+        is_owner: row.owner_id == user_id
     })
 }
 
 #[derive(Debug, Clone, FromRow)]
 pub struct ChannelAccessRow {
     pub channel_id: String,
-    pub server_id: String,
+    pub server_id: String
 }
 
 pub async fn load_channel_server_id(state: &AppState, channel_id: &str) -> Result<String> {
@@ -110,10 +107,7 @@ pub async fn load_channel_server_id(state: &AppState, channel_id: &str) -> Resul
     Ok(row.server_id)
 }
 
-pub async fn load_server_default_role(
-    state: &AppState,
-    server_id: &str,
-) -> Result<Option<ServerRoleRecord>> {
+pub async fn load_server_default_role(state: &AppState, server_id: &str) -> Result<Option<ServerRoleRecord>> {
     let role = sqlx::query_as::<_, ServerRoleRecord>(
         r#"
         SELECT id, server_id, name, permissions, is_default, position, created_at

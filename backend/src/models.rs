@@ -13,7 +13,7 @@ use sqlx::FromRow;
 #[sqlx(type_name = "UserRole", rename_all = "UPPERCASE")]
 pub enum UserRole {
     USER,
-    ADMIN,
+    ADMIN
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, sqlx::Type)]
@@ -32,7 +32,7 @@ pub enum ServerPermission {
     BAN_MEMBERS,
     ADD_REACTIONS,
     USE_EMOJIS,
-    ATTACH_FILES,
+    ATTACH_FILES
 }
 
 impl ServerPermission {
@@ -51,7 +51,7 @@ impl ServerPermission {
             ServerPermission::BAN_MEMBERS => "BAN_MEMBERS",
             ServerPermission::ADD_REACTIONS => "ADD_REACTIONS",
             ServerPermission::USE_EMOJIS => "USE_EMOJIS",
-            ServerPermission::ATTACH_FILES => "ATTACH_FILES",
+            ServerPermission::ATTACH_FILES => "ATTACH_FILES"
         }
     }
 }
@@ -61,7 +61,7 @@ pub struct PublicUser {
     pub id: String,
     pub email: String,
     pub username: String,
-    pub avatar_url: Option<String>,
+    pub avatar_url: Option<String>
 }
 
 #[derive(Debug, Clone, FromRow)]
@@ -72,7 +72,7 @@ pub struct UserRecord {
     pub password: String,
     pub avatar_url: Option<String>,
     pub role: UserRole,
-    pub created_at: NaiveDateTime,
+    pub created_at: NaiveDateTime
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -80,7 +80,7 @@ pub struct ServerSummary {
     pub id: String,
     pub owner_id: String,
     pub name: String,
-    pub created_at: NaiveDateTime,
+    pub created_at: NaiveDateTime
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -89,7 +89,7 @@ pub struct ChannelRecord {
     pub server_id: String,
     pub name: String,
     pub description: Option<String>,
-    pub created_at: NaiveDateTime,
+    pub created_at: NaiveDateTime
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -100,7 +100,7 @@ pub struct ServerRoleRecord {
     pub permissions: Vec<String>,
     pub is_default: bool,
     pub position: i32,
-    pub created_at: NaiveDateTime,
+    pub created_at: NaiveDateTime
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -108,7 +108,7 @@ pub struct ServerMemberRecord {
     pub server_id: String,
     pub user_id: String,
     pub role_id: Option<i32>,
-    pub joined_at: NaiveDateTime,
+    pub joined_at: NaiveDateTime
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -117,7 +117,7 @@ pub struct MessageRecord {
     pub channel_id: String,
     pub sender_id: String,
     pub content: String,
-    pub created_at: NaiveDateTime,
+    pub created_at: NaiveDateTime
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -128,14 +128,14 @@ pub struct ServerRoleResponse {
     pub permissions: Vec<ServerPermission>,
     pub is_default: bool,
     pub position: i32,
-    pub created_at: NaiveDateTime,
+    pub created_at: NaiveDateTime
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ServerMemberResponse {
     pub user: PublicUser,
     pub role: Option<ServerRoleResponse>,
-    pub joined_at: NaiveDateTime,
+    pub joined_at: NaiveDateTime
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -146,7 +146,7 @@ pub struct ServerDetailResponse {
     pub created_at: NaiveDateTime,
     pub channels: Vec<ChannelRecord>,
     pub users: Vec<ServerMemberRecord>,
-    pub roles: Vec<ServerRoleResponse>,
+    pub roles: Vec<ServerRoleResponse>
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -155,7 +155,7 @@ pub struct MessageResponse {
     pub channel_id: String,
     pub sender_id: String,
     pub content: String,
-    pub created_at: NaiveDateTime,
+    pub created_at: NaiveDateTime
 }
 
 impl From<MessageRecord> for MessageResponse {
@@ -165,7 +165,7 @@ impl From<MessageRecord> for MessageResponse {
             channel_id: value.channel_id,
             sender_id: value.sender_id,
             content: value.content,
-            created_at: value.created_at,
+            created_at: value.created_at
         }
     }
 }
@@ -194,12 +194,12 @@ impl From<ServerRoleRecord> for ServerRoleResponse {
                     "ADD_REACTIONS" => Some(ServerPermission::ADD_REACTIONS),
                     "USE_EMOJIS" => Some(ServerPermission::USE_EMOJIS),
                     "ATTACH_FILES" => Some(ServerPermission::ATTACH_FILES),
-                    _ => None,
+                    _ => None
                 })
                 .collect(),
             is_default: value.is_default,
             position: value.position,
-            created_at: value.created_at,
+            created_at: value.created_at
         }
     }
 }
