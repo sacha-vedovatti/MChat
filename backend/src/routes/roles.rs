@@ -1,3 +1,10 @@
+//
+// EPITECH PROJECT, 2026
+// MChat
+// File description:
+// Roles routes
+//
+
 use crate::{
     app_state::AppState,
     auth::CurrentUser,
@@ -26,18 +33,12 @@ pub struct UpdateRoleBody {
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/servers/{server_id}/roles", get(get_roles).post(create_role))
-        .route(
-            "/servers/{server_id}/roles/{role_id}",
-            put(update_role).delete(delete_role),
-        )
+        .route("/servers/{server_id}/roles/{role_id}", put(update_role).delete(delete_role))
 }
 
-async fn get_roles(
-    Extension(state): Extension<AppState>,
-    user: CurrentUser,
-    Path(server_id): Path<String>,
-) -> Result<Json<Vec<ServerRoleResponse>>> {
+async fn get_roles(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>) -> Result<Json<Vec<ServerRoleResponse>>> {
     validate_uuid(&server_id)?;
+
     let access = load_server_access(&state, &server_id, &user.id).await?;
     if !access.can(ServerPermission::VIEW_CHANNEL) {
         return Err(AppError::Forbidden("view channel permission required".to_string()));
@@ -58,16 +59,16 @@ async fn get_roles(
     Ok(Json(roles.into_iter().map(ServerRoleResponse::from).collect()))
 }
 
-async fn create_role(
-    Extension(state): Extension<AppState>,
-    user: CurrentUser,
-    Path(server_id): Path<String>,
-    Json(body): Json<CreateRoleBody>,
-) -> Result<Json<ServerRoleResponse>> {
+fn contains_privileged_permission(permissions: &[ServerPermission]) -> bool {
+    permissions.iter().any(|p| matches!(p, ServerPermission::OWNER | ServerPermission::ADMIN))
+}
+
+async fn create_role(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>, Json(body): Json<CreateRoleBody>) -> Result<Json<ServerRoleResponse>> {
     validate_uuid(&server_id)?;
+
     let access = load_server_access(&state, &server_id, &user.id).await?;
-    if !access.can(ServerPermission::MANAGE_ROLES) {
-        return Err(AppError::Forbidden("manage roles permission required".to_string()));
+    if !access.is_owner && contains_privileged_permission(&body.permissions) {
+        return Err(AppError::Forbidden("Permission missing.".to_string()))
     }
 
     let position = body.position.unwrap_or(0);
@@ -88,16 +89,12 @@ async fn create_role(
     Ok(Json(ServerRoleResponse::from(role)))
 }
 
-async fn update_role(
-    Extension(state): Extension<AppState>,
-    user: CurrentUser,
-    Path((server_id, role_id)): Path<(String, i32)>,
-    Json(body): Json<UpdateRoleBody>,
-) -> Result<Json<ServerRoleResponse>> {
+async fn update_role(Extension(state): Extension<AppState>, user: CurrentUser, Path((server_id, role_id)): Path<(String, i32)>, Json(body): Json<UpdateRoleBody>) -> Result<Json<ServerRoleResponse>> {
     validate_uuid(&server_id)?;
+
     let access = load_server_access(&state, &server_id, &user.id).await?;
-    if !access.can(ServerPermission::MANAGE_ROLES) {
-        return Err(AppError::Forbidden("manage roles permission required".to_string()));
+    if !access.is_owner && contains_privileged_permission(&body.permissions.as_deref().unwrap_or(&[])) {
+        return Err(AppError::Forbidden("Permission missing.".to_string()))
     }
 
     let role = sqlx::query_as::<_, ServerRoleRecord>(
@@ -122,12 +119,9 @@ async fn update_role(
     Ok(Json(ServerRoleResponse::from(role)))
 }
 
-async fn delete_role(
-    Extension(state): Extension<AppState>,
-    user: CurrentUser,
-    Path((server_id, role_id)): Path<(String, i32)>,
-) -> Result<Json<ServerRoleResponse>> {
+async fn delete_role(Extension(state): Extension<AppState>, user: CurrentUser, Path((server_id, role_id)): Path<(String, i32)>) -> Result<Json<ServerRoleResponse>> {
     validate_uuid(&server_id)?;
+
     let access = load_server_access(&state, &server_id, &user.id).await?;
     if !access.can(ServerPermission::MANAGE_ROLES) {
         return Err(AppError::Forbidden("manage roles permission required".to_string()));
@@ -139,8 +133,7 @@ async fn delete_role(
         FROM "ServerRole"
         WHERE id = $1 AND server_id = $2
         "#,
-    )
-    .bind(role_id)
+    ).bind(role_id)
     .bind(&server_id)
     .fetch_one(&state.pool)
     .await?;
@@ -148,7 +141,6 @@ async fn delete_role(
     if role.is_default {
         return Err(AppError::Conflict("default role cannot be deleted".to_string()));
     }
-
     if let Some(default_role) = load_server_default_role(&state, &server_id).await? {
         sqlx::query(
             r#"
