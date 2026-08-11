@@ -1,3 +1,10 @@
+//
+// EPITECH PROJECT, 2026
+// MChat
+// File description:
+// Members routes
+//
+
 use crate::{
     app_state::AppState,
     auth::CurrentUser,
@@ -5,6 +12,7 @@ use crate::{
     models::{ServerMemberRecord, ServerMemberResponse, ServerPermission, ServerRoleResponse},
     permissions::{load_server_access, load_server_default_role},
 };
+
 use axum::{extract::{Extension, Path}, routing::{get, put}, Json, Router};
 use serde::Deserialize;
 use uuid::Uuid;
@@ -17,18 +25,12 @@ pub struct UpdateMemberBody {
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/servers/{server_id}/members", get(get_members).post(join_server))
-        .route(
-            "/servers/{server_id}/members/{user_id}",
-            put(update_member_role).delete(kick_member),
-        )
+        .route("/servers/{server_id}/members/{user_id}", put(update_member_role).delete(kick_member))
 }
 
-async fn get_members(
-    Extension(state): Extension<AppState>,
-    user: CurrentUser,
-    Path(server_id): Path<String>,
-) -> Result<Json<Vec<ServerMemberResponse>>> {
+async fn get_members(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>) -> Result<Json<Vec<ServerMemberResponse>>> {
     validate_uuid(&server_id)?;
+
     let access = load_server_access(&state, &server_id, &user.id).await?;
     if !access.can(ServerPermission::VIEW_CHANNEL) {
         return Err(AppError::Forbidden("view channel permission required".to_string()));
@@ -37,12 +39,9 @@ async fn get_members(
     Ok(Json(load_members(&state, &server_id).await?))
 }
 
-async fn join_server(
-    Extension(state): Extension<AppState>,
-    user: CurrentUser,
-    Path(server_id): Path<String>,
-) -> Result<Json<ServerMemberResponse>> {
+async fn join_server(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>) -> Result<Json<ServerMemberResponse>> {
     validate_uuid(&server_id)?;
+
     let access = load_server_access(&state, &server_id, &user.id).await?;
     if access.is_owner || access.member_role_id.is_some() {
         return Err(AppError::Conflict("already a member".to_string()));
@@ -64,15 +63,14 @@ async fn join_server(
     load_member(&state, &server_id, &user.id).await
 }
 
-async fn update_member_role(
-    Extension(state): Extension<AppState>,
-    user: CurrentUser,
-    Path((server_id, target_user_id)): Path<(String, String)>,
-    Json(body): Json<UpdateMemberBody>,
-) -> Result<Json<ServerMemberResponse>> {
+async fn update_member_role(Extension(state): Extension<AppState>, user: CurrentUser, Path((server_id, target_user_id)): Path<(String, String)>, Json(body): Json<UpdateMemberBody>) -> Result<Json<ServerMemberResponse>> {
     validate_uuid(&server_id)?;
     validate_uuid(&target_user_id)?;
+
     let access = load_server_access(&state, &server_id, &user.id).await?;
+    if access.server.owner_id == target_user_id {
+        return Err(AppError::Forbidden("Permission missing.".to_string()));
+    }
     if !access.can(ServerPermission::MANAGE_ROLES) {
         return Err(AppError::Forbidden("manage roles permission required".to_string()));
     }
@@ -111,14 +109,14 @@ async fn update_member_role(
     load_member(&state, &server_id, &target_user_id).await
 }
 
-async fn kick_member(
-    Extension(state): Extension<AppState>,
-    user: CurrentUser,
-    Path((server_id, target_user_id)): Path<(String, String)>,
-) -> Result<Json<ServerMemberResponse>> {
+async fn kick_member(Extension(state): Extension<AppState>, user: CurrentUser, Path((server_id, target_user_id)): Path<(String, String)>) -> Result<Json<ServerMemberResponse>> {
     validate_uuid(&server_id)?;
     validate_uuid(&target_user_id)?;
+
     let access = load_server_access(&state, &server_id, &user.id).await?;
+    if access.server.owner_id == target_user_id {
+        return Err(AppError::Forbidden("Permission missing.".to_string()));
+    }
     if !access.can(ServerPermission::KICK_MEMBERS) {
         return Err(AppError::Forbidden("kick members permission required".to_string()));
     }
@@ -138,7 +136,6 @@ async fn kick_member(
     if removed.rows_affected() == 0 {
         return Err(AppError::NotFound("member not found".to_string()));
     }
-
     Ok(existing)
 }
 
@@ -184,11 +181,7 @@ async fn load_members(state: &AppState, server_id: &str) -> Result<Vec<ServerMem
     Ok(members)
 }
 
-async fn load_member(
-    state: &AppState,
-    server_id: &str,
-    user_id: &str,
-) -> Result<Json<ServerMemberResponse>> {
+async fn load_member(state: &AppState, server_id: &str, user_id: &str) -> Result<Json<ServerMemberResponse>> {
     let member = load_members(state, server_id)
         .await?
         .into_iter()

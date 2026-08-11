@@ -67,6 +67,9 @@ async fn create_role(Extension(state): Extension<AppState>, user: CurrentUser, P
     validate_uuid(&server_id)?;
 
     let access = load_server_access(&state, &server_id, &user.id).await?;
+    if !access.can(ServerPermission::MANAGE_ROLES) {
+        return Err(AppError::Forbidden("'MANAGE_ROLES' permission required".to_string()));
+    }
     if !access.is_owner && contains_privileged_permission(&body.permissions) {
         return Err(AppError::Forbidden("Permission missing.".to_string()))
     }
@@ -93,6 +96,9 @@ async fn update_role(Extension(state): Extension<AppState>, user: CurrentUser, P
     validate_uuid(&server_id)?;
 
     let access = load_server_access(&state, &server_id, &user.id).await?;
+    if !access.can(ServerPermission::MANAGE_ROLES) {
+        return Err(AppError::Forbidden("'MANAGE_ROLES' permission required".to_string()));
+    }
     if !access.is_owner && contains_privileged_permission(&body.permissions.as_deref().unwrap_or(&[])) {
         return Err(AppError::Forbidden("Permission missing.".to_string()))
     }
@@ -124,7 +130,7 @@ async fn delete_role(Extension(state): Extension<AppState>, user: CurrentUser, P
 
     let access = load_server_access(&state, &server_id, &user.id).await?;
     if !access.can(ServerPermission::MANAGE_ROLES) {
-        return Err(AppError::Forbidden("manage roles permission required".to_string()));
+        return Err(AppError::Forbidden("'MANAGE_ROLES' permission required".to_string()));
     }
 
     let role = sqlx::query_as::<_, ServerRoleRecord>(
