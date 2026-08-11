@@ -47,7 +47,7 @@ model Server {
   name         String
   created_at   DateTime      @default(now())
   channels     Channel[]
-  participants ServerUser[]
+  users        ServerUser[]
   roles        ServerRole[]
 
   owner User @relation(fields: [owner_id], references: [id], onDelete: Cascade)
