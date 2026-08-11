@@ -30,7 +30,8 @@ jobs:
       - name: Verify Backend
         run: |
           for i in $(seq 1 30); do
-            if curl --fail --silent --show-error http://localhost:3000/health; then
+            if curl --fail --silent --show-error http://localhost:3000/health >/dev/null && \
+               curl --fail --silent --show-error http://localhost:3000/ >/dev/null; then
               exit 0
             fi
 
