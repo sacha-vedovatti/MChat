@@ -1,39 +1,32 @@
-FROM node:22-bookworm-slim AS build
+FROM rust:1-bookworm AS build
 
 WORKDIR /app/backend
 
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends openssl ca-certificates \
+	&& apt-get install -y --no-install-recommends pkg-config libssl-dev ca-certificates \
 	&& rm -rf /var/lib/apt/lists/*
 
-COPY prisma ./prisma
-COPY prisma.config.ts ./
-COPY package*.json ./
-RUN npm ci
-
-COPY nest-cli.json ./
-COPY tsconfig*.json ./
+COPY Cargo.toml ./
+COPY Cargo.lock ./
+COPY migrations ./migrations
 COPY src ./src
 
-RUN npm run build
+RUN cargo build --release
 
 
-FROM node:22-bookworm-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 
 WORKDIR /app/backend
 
 ENV NODE_ENV=production
 
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends openssl ca-certificates \
+	&& apt-get install -y --no-install-recommends ca-certificates openssl \
 	&& rm -rf /var/lib/apt/lists/*
 
-COPY --from=build /app/backend/package*.json ./
-COPY --from=build /app/backend/node_modules ./node_modules
-COPY --from=build /app/backend/dist ./dist
-COPY --from=build /app/backend/prisma ./prisma
-COPY --from=build /app/backend/prisma.config.ts ./
+COPY --from=build /app/backend/target/release/mchat-backend /app/backend/mchat-backend
+COPY --from=build /app/backend/migrations /app/backend/migrations
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]
+CMD ["/app/backend/mchat-backend"]
