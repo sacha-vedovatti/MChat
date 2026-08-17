@@ -54,16 +54,10 @@ impl FromRequestParts<AppState> for CurrentUser {
 }
 
 fn bearer_token(parts: &Parts) -> Result<String> {
-    let header = parts.headers
-        .get(AUTHORIZATION)
-        .ok_or_else(|| AppError::Unauthorized("missing authorization header".to_string()))?;
-    let value = header.to_str()
-        .map_err(|_| AppError::Unauthorized("invalid authorization header".to_string()))?;
+    let header = parts.headers.get(AUTHORIZATION).ok_or_else(|| AppError::Unauthorized("missing authorization header".to_string()))?;
+    let value = header.to_str().map_err(|_| AppError::Unauthorized("invalid authorization header".to_string()))?;
 
-    value.strip_prefix("Bearer ")
-        .map(|token| token.trim().to_string())
-        .filter(|token| !token.is_empty())
-        .ok_or_else(|| AppError::Unauthorized("missing bearer token".to_string()))
+    value.strip_prefix("Bearer ").map(|token| token.trim().to_string()).filter(|token| !token.is_empty()).ok_or_else(|| AppError::Unauthorized("missing bearer token".to_string()))
 }
 
 pub fn hash_password(password: &str) -> Result<String> {

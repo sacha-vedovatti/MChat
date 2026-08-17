@@ -20,14 +20,14 @@ use uuid::Uuid;
 pub struct CreateRoleBody {
     pub name: String,
     pub permissions: Vec<ServerPermission>,
-    pub position: Option<i32>,
+    pub position: Option<i32>
 }
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateRoleBody {
     pub name: Option<String>,
     pub permissions: Option<Vec<ServerPermission>>,
-    pub position: Option<i32>,
+    pub position: Option<i32>
 }
 
 pub fn router() -> Router<AppState> {

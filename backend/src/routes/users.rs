@@ -94,7 +94,7 @@ async fn create_user(Extension(state): Extension<AppState>, user: CurrentUser, J
 }
 
 async fn update_user(Extension(state): Extension<AppState>, user: CurrentUser, Path(user_id): Path<String>, Json(body): Json<UpdateUserBody>) -> Result<Json<PublicUser>> {
-    // require_admin(&user).await?;
+    require_admin(&user).await?;
     validate_uuid(&user_id)?;
     update_user_common(&state, &user_id, body).await
 }
