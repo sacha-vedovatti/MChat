@@ -68,7 +68,7 @@ async fn update_member_role(Extension(state): Extension<AppState>, user: Current
     validate_uuid(&target_user_id)?;
 
     let access = load_server_access(&state, &server_id, &user.id).await?;
-    if access.server.owner_id == target_user_id {
+    if access.server.owner_id == target_user_id && !access.is_owner {
         return Err(AppError::Forbidden("Permission missing.".to_string()));
     }
     if !access.can(ServerPermission::MANAGE_ROLES) {
