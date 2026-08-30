@@ -19,7 +19,7 @@ use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 pub struct CreateServerBody {
-    pub name: String,
+    pub name: String
 }
 
 #[derive(Debug, Deserialize)]
@@ -99,7 +99,7 @@ async fn create_server(Extension(state): Extension<AppState>, user: CurrentUser,
     )
     .bind(&server.id)
     .bind("@everyone")
-    .bind(vec![ServerPermission::VIEW_CHANNEL.as_str().to_string(), ServerPermission::SEND_MESSAGES.as_str().to_string()])
+    .bind(vec![ServerPermission::VIEW_CHANNEL, ServerPermission::SEND_MESSAGES])
     .fetch_one(&mut *transaction)
     .await?;
 

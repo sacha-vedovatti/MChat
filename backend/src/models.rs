@@ -35,6 +35,16 @@ pub enum ServerPermission {
     ATTACH_FILES
 }
 
+impl sqlx::postgres::PgHasArrayType for ServerPermission {
+    fn array_type_info() -> sqlx::postgres::PgTypeInfo {
+        sqlx::postgres::PgTypeInfo::with_name("\"_ServerPermissions\"")
+    }
+
+    fn array_compatible(ty: &sqlx::postgres::PgTypeInfo) -> bool {
+        *ty == sqlx::postgres::PgTypeInfo::with_name("_ServerPermissions")
+    }
+}
+
 impl ServerPermission {
     pub fn as_str(self) -> &'static str {
         match self {
@@ -97,7 +107,7 @@ pub struct ServerRoleRecord {
     pub id: i32,
     pub server_id: String,
     pub name: String,
-    pub permissions: Vec<String>,
+    pub permissions: Vec<ServerPermission>,
     pub is_default: bool,
     pub position: i32,
     pub created_at: NaiveDateTime
@@ -176,27 +186,7 @@ impl From<ServerRoleRecord> for ServerRoleResponse {
             id: value.id,
             server_id: value.server_id,
             name: value.name,
-            permissions: value
-                .permissions
-                .into_iter()
-                .filter_map(|permission| match permission.as_str() {
-                    "OWNER" => Some(ServerPermission::OWNER),
-                    "ADMIN" => Some(ServerPermission::ADMIN),
-                    "VIEW_CHANNEL" => Some(ServerPermission::VIEW_CHANNEL),
-                    "SEND_MESSAGES" => Some(ServerPermission::SEND_MESSAGES),
-                    "MANAGE_MESSAGES" => Some(ServerPermission::MANAGE_MESSAGES),
-                    "MANAGE_CHANNELS" => Some(ServerPermission::MANAGE_CHANNELS),
-                    "MANAGE_SERVER" => Some(ServerPermission::MANAGE_SERVER),
-                    "MANAGE_ROLES" => Some(ServerPermission::MANAGE_ROLES),
-                    "INVITE_MEMBERS" => Some(ServerPermission::INVITE_MEMBERS),
-                    "KICK_MEMBERS" => Some(ServerPermission::KICK_MEMBERS),
-                    "BAN_MEMBERS" => Some(ServerPermission::BAN_MEMBERS),
-                    "ADD_REACTIONS" => Some(ServerPermission::ADD_REACTIONS),
-                    "USE_EMOJIS" => Some(ServerPermission::USE_EMOJIS),
-                    "ATTACH_FILES" => Some(ServerPermission::ATTACH_FILES),
-                    _ => None
-                })
-                .collect(),
+            permissions: value.permissions,
             is_default: value.is_default,
             position: value.position,
             created_at: value.created_at

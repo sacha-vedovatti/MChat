@@ -20,32 +20,30 @@ pub struct ServerAccessRow {
     pub name: String,
     pub created_at: chrono::NaiveDateTime,
     pub member_role_id: Option<i32>,
-    pub permissions: Option<Vec<String>>
+    pub permissions: Option<Vec<ServerPermission>>
 }
 
 #[derive(Debug, Clone)]
 pub struct ServerAccess {
     pub server: ServerSummary,
     pub member_role_id: Option<i32>,
-    pub permissions: Vec<String>,
+    pub permissions: Vec<ServerPermission>,
     pub is_owner: bool
 }
 
 impl ServerAccess {
     pub fn can(&self, required: ServerPermission) -> bool {
-        let required = required.as_str();
         self.is_owner
-            || self.permissions.iter().any(|permission| permission == "OWNER")
-            || self.permissions.iter().any(|permission| permission == "ADMIN")
-            || self.permissions.iter().any(|permission| permission == required)
+            || self.permissions.contains(&ServerPermission::OWNER)
+            || self.permissions.contains(&ServerPermission::ADMIN)
+            || self.permissions.contains(&required)
     }
 }
 
-pub fn can_user_admin_all(role_permissions: &[String], required: ServerPermission) -> bool {
-    let required = required.as_str();
-    role_permissions.iter().any(|permission| permission == "OWNER")
-        || role_permissions.iter().any(|permission| permission == "ADMIN")
-        || role_permissions.iter().any(|permission| permission == required)
+pub fn can_user_admin_all(role_permissions: &[ServerPermission], required: ServerPermission) -> bool {
+    role_permissions.contains(&ServerPermission::OWNER)
+        || role_permissions.contains(&ServerPermission::ADMIN)
+        || role_permissions.contains(&required)
 }
 
 pub async fn load_server_access(state: &AppState, server_id: &str, user_id: &str) -> Result<ServerAccess> {
