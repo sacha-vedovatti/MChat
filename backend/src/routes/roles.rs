@@ -84,7 +84,7 @@ async fn create_role(Extension(state): Extension<AppState>, user: CurrentUser, P
     )
     .bind(&server_id)
     .bind(&body.name)
-    .bind(body.permissions.into_iter().map(|permission| permission.as_str().to_string()).collect::<Vec<_>>())
+    .bind(body.permissions)
     .bind(position)
     .fetch_one(&state.pool)
     .await?;
@@ -117,7 +117,7 @@ async fn update_role(Extension(state): Extension<AppState>, user: CurrentUser, P
     .bind(role_id)
     .bind(&server_id)
     .bind(body.name)
-    .bind(body.permissions.map(|permissions| permissions.into_iter().map(|permission| permission.as_str().to_string()).collect::<Vec<_>>()))
+    .bind(body.permissions)
     .bind(body.position)
     .fetch_one(&state.pool)
     .await?;
