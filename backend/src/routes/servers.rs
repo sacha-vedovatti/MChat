@@ -7,7 +7,7 @@
 
 use crate::{
     app_state::AppState,
-    auth::{load_public_user, CurrentUser},
+    auth::{load_public_user, require_admin, CurrentUser},
     error::{AppError, Result},
     models::{ChannelRecord, ServerDetailResponse, ServerMemberRecord, ServerMemberResponse, ServerPermission, ServerRoleRecord, ServerRoleResponse, ServerSummary},
     permissions::load_server_access,
@@ -44,6 +44,7 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn get_servers(Extension(state): Extension<AppState>, user: CurrentUser) -> Result<Json<Vec<ServerDetailResponse>>> {
+    require_admin(&user).await?;
     let server_ids = sqlx::query_scalar::<_, String>(
         r#"
         SELECT s.id
