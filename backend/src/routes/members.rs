@@ -117,7 +117,9 @@ async fn kick_member(Extension(state): Extension<AppState>, user: CurrentUser, P
     if access.server.owner_id == target_user_id {
         return Err(AppError::Forbidden("Permission missing.".to_string()));
     }
-    if !access.can(ServerPermission::KICK_MEMBERS) {
+
+    let is_self_leave = target_user_id == user.id;
+    if !is_self_leave && !access.can(ServerPermission::KICK_MEMBERS) {
         return Err(AppError::Forbidden("kick members permission required".to_string()));
     }
 
