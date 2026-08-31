@@ -45,9 +45,10 @@ jobs:
         run: |
           html="$(curl --fail --silent --show-error http://localhost:8080)"
 
-          echo "$html" | grep -q '/assets/.*\.js'
+          echo "$html" | grep -Eq '(/_next/static/.*\.js|/assets/.*\.js)'
 
-          asset_path="$(echo "$html" | grep -oE '/assets/[^" ]+\.js' | head -n1)"
+          asset_path="$(echo "$html" | grep -oE '(/_next/static/[^" ]+\.js|/assets/[^" ]+\.js)' | head -n1)"
+          [ -n "$asset_path" ]
           curl --fail --silent --show-error "http://localhost:8080${asset_path}" >/dev/null
 
       - name: Verify database
