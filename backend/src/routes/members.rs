@@ -28,7 +28,14 @@ pub fn router() -> Router<AppState> {
         .route("/servers/{server_id}/members/{user_id}", put(update_member_role).delete(kick_member))
 }
 
-async fn get_members(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>) -> Result<Json<Vec<ServerMemberResponse>>> {
+#[utoipa::path(get, path = "/servers/{server_id}/members", tag = "Members", security(("bearer_auth" = [])),
+    params(("server_id" = String, Path, description = "Server UUID")),
+    responses((status = 200, description = "Server members", body = [crate::doc::schemas::ServerMember]),
+              (status = 400, description = "Invalid server id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "View channel permission required", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn get_members(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>) -> Result<Json<Vec<ServerMemberResponse>>> {
     validate_uuid(&server_id)?;
 
     let access = load_server_access(&state, &server_id, &user.id).await?;
@@ -39,7 +46,14 @@ async fn get_members(Extension(state): Extension<AppState>, user: CurrentUser, P
     Ok(Json(load_members(&state, &server_id).await?))
 }
 
-async fn join_server(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>) -> Result<Json<ServerMemberResponse>> {
+#[utoipa::path(post, path = "/servers/{server_id}/members", tag = "Members", security(("bearer_auth" = [])),
+    params(("server_id" = String, Path, description = "Server UUID")),
+    responses((status = 200, description = "Joined server", body = crate::doc::schemas::ServerMember),
+              (status = 400, description = "Invalid server id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 409, description = "Already a member", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn join_server(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>) -> Result<Json<ServerMemberResponse>> {
     validate_uuid(&server_id)?;
 
     let access = load_server_access(&state, &server_id, &user.id).await?;
@@ -63,7 +77,16 @@ async fn join_server(Extension(state): Extension<AppState>, user: CurrentUser, P
     load_member(&state, &server_id, &user.id).await
 }
 
-async fn update_member_role(Extension(state): Extension<AppState>, user: CurrentUser, Path((server_id, target_user_id)): Path<(String, String)>, Json(body): Json<UpdateMemberBody>) -> Result<Json<ServerMemberResponse>> {
+#[utoipa::path(put, path = "/servers/{server_id}/members/{user_id}", tag = "Members", security(("bearer_auth" = [])),
+    params(("server_id" = String, Path, description = "Server UUID"), ("user_id" = String, Path, description = "Target user UUID")),
+    request_body = crate::doc::schemas::UpdateMemberBody,
+    responses((status = 200, description = "Updated member role", body = crate::doc::schemas::ServerMember),
+              (status = 400, description = "Invalid id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "Manage roles permission required", body = crate::doc::schemas::ErrorResponse),
+              (status = 404, description = "Member or role not found", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn update_member_role(Extension(state): Extension<AppState>, user: CurrentUser, Path((server_id, target_user_id)): Path<(String, String)>, Json(body): Json<UpdateMemberBody>) -> Result<Json<ServerMemberResponse>> {
     validate_uuid(&server_id)?;
     validate_uuid(&target_user_id)?;
 
@@ -109,7 +132,15 @@ async fn update_member_role(Extension(state): Extension<AppState>, user: Current
     load_member(&state, &server_id, &target_user_id).await
 }
 
-async fn kick_member(Extension(state): Extension<AppState>, user: CurrentUser, Path((server_id, target_user_id)): Path<(String, String)>) -> Result<Json<ServerMemberResponse>> {
+#[utoipa::path(delete, path = "/servers/{server_id}/members/{user_id}", tag = "Members", security(("bearer_auth" = [])),
+    params(("server_id" = String, Path, description = "Server UUID"), ("user_id" = String, Path, description = "Target user UUID")),
+    responses((status = 200, description = "Removed member", body = crate::doc::schemas::ServerMember),
+              (status = 400, description = "Invalid id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "Kick permission required", body = crate::doc::schemas::ErrorResponse),
+              (status = 404, description = "Member not found", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn kick_member(Extension(state): Extension<AppState>, user: CurrentUser, Path((server_id, target_user_id)): Path<(String, String)>) -> Result<Json<ServerMemberResponse>> {
     validate_uuid(&server_id)?;
     validate_uuid(&target_user_id)?;
 

@@ -45,7 +45,14 @@ pub fn router() -> Router<AppState> {
         .route("/auth/login", post(login))
 }
 
-async fn register(Extension(state): Extension<AppState>, Json(body): Json<RegisterBody>) -> Result<Json<TokenResponse>> {
+#[utoipa::path(post, path = "/auth/register", tag = "Auth", request_body = crate::doc::schemas::RegisterBody,
+    responses(
+        (status = 200, description = "User registered successfully", body = crate::doc::schemas::TokenResponse),
+        (status = 409, description = "A user with this email already exists", body = crate::doc::schemas::ErrorResponse),
+        (status = 400, description = "Invalid request", body = crate::doc::schemas::ErrorResponse)
+    )
+)]
+pub(crate) async fn register(Extension(state): Extension<AppState>, Json(body): Json<RegisterBody>) -> Result<Json<TokenResponse>> {
     let existing = sqlx::query_scalar::<_, String>(r#"SELECT id FROM "User" WHERE email = $1"#)
         .bind(&body.email)
         .fetch_optional(&state.pool)
@@ -75,7 +82,13 @@ async fn register(Extension(state): Extension<AppState>, Json(body): Json<Regist
     }))
 }
 
-async fn login(Extension(state): Extension<AppState>, Json(body): Json<LoginBody>) -> Result<Json<LoginResponse>> {
+#[utoipa::path(post, path = "/auth/login", tag = "Auth", request_body = crate::doc::schemas::LoginBody,
+    responses(
+        (status = 200, description = "Successfully authenticated", body = crate::doc::schemas::LoginResponse),
+        (status = 401, description = "Invalid credentials", body = crate::doc::schemas::ErrorResponse)
+    )
+)]
+pub(crate) async fn login(Extension(state): Extension<AppState>, Json(body): Json<LoginBody>) -> Result<Json<LoginResponse>> {
     let user = sqlx::query_as::<_, UserRecord>(
         r#"
         SELECT id, email, username, password, avatar_url, role, created_at

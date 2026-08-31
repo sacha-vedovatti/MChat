@@ -42,7 +42,16 @@ pub fn router() -> Router<AppState> {
         .route("/messages/{message_id}", delete(delete_message))
 }
 
-async fn get_messages(Extension(state): Extension<AppState>, user: CurrentUser, Path(channel_id): Path<String>, Query(query): Query<PaginationQuery>) -> Result<Json<MessagePageResponse>> {
+#[utoipa::path(get, path = "/channels/{channel_id}/messages", tag = "Messages", security(("bearer_auth" = [])),
+    params(("channel_id" = String, Path, description = "Channel UUID"),
+        ("page" = Option<u32>, Query, description = "Page number, starting at 1", example = 1),
+        ("limit" = Option<u32>, Query, description = "Items per page (1-200)", example = 50)),
+    responses((status = 200, description = "Paginated channel messages", body = crate::doc::schemas::MessagePageResponse),
+              (status = 400, description = "Invalid channel id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "View channel permission required", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn get_messages(Extension(state): Extension<AppState>, user: CurrentUser, Path(channel_id): Path<String>, Query(query): Query<PaginationQuery>) -> Result<Json<MessagePageResponse>> {
     validate_uuid(&channel_id)?;
 
     let server_id = load_channel_server_id(&state, &channel_id).await?;
@@ -88,7 +97,14 @@ async fn get_messages(Extension(state): Extension<AppState>, user: CurrentUser, 
     }))
 }
 
-async fn create_message(Extension(state): Extension<AppState>, user: CurrentUser, Path(channel_id): Path<String>, Json(body): Json<CreateMessageBody>) -> Result<Json<MessageResponse>> {
+#[utoipa::path(post, path = "/channels/{channel_id}/messages", tag = "Messages", security(("bearer_auth" = [])),
+    params(("channel_id" = String, Path, description = "Channel UUID")), request_body = crate::doc::schemas::CreateMessageBody,
+    responses((status = 200, description = "Created message", body = crate::doc::schemas::Message),
+              (status = 400, description = "Invalid channel id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "Send messages permission required", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn create_message(Extension(state): Extension<AppState>, user: CurrentUser, Path(channel_id): Path<String>, Json(body): Json<CreateMessageBody>) -> Result<Json<MessageResponse>> {
     validate_uuid(&channel_id)?;
 
     let server_id = load_channel_server_id(&state, &channel_id).await?;
@@ -114,7 +130,16 @@ async fn create_message(Extension(state): Extension<AppState>, user: CurrentUser
     Ok(Json(MessageResponse::from(message)))
 }
 
-async fn delete_message(Extension(state): Extension<AppState>, user: CurrentUser, Path(message_id): Path<String>) -> Result<Json<MessageResponse>> {
+#[utoipa::path(
+    delete, path = "/messages/{message_id}", tag = "Messages", security(("bearer_auth" = [])),
+    params(("message_id" = String, Path, description = "Message UUID")),
+    responses((status = 200, description = "Deleted message", body = crate::doc::schemas::Message),
+              (status = 400, description = "Invalid message id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "Cannot delete this message", body = crate::doc::schemas::ErrorResponse),
+              (status = 404, description = "Message not found", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn delete_message(Extension(state): Extension<AppState>, user: CurrentUser, Path(message_id): Path<String>) -> Result<Json<MessageResponse>> {
     validate_uuid(&message_id)?;
 
     let message = sqlx::query_as::<_, MessageRecord>(

@@ -14,10 +14,12 @@ pub fn router() -> Router<AppState> {
         .route("/health", get(health))
 }
 
-async fn root() -> impl IntoResponse {
+#[utoipa::path(get, path = "/", tag = "Health", responses((status = 200, description = "API is reachable", body = String, example = "Hello World!")))]
+pub(crate) async fn root() -> impl IntoResponse {
     "Hello World!"
 }
 
-async fn health() -> impl IntoResponse {
+#[utoipa::path(get, path = "/health", tag = "Health", responses((status = 200, description = "API health status", body = String, example = "OK")))]
+pub(crate) async fn health() -> impl IntoResponse {
     "OK"
 }

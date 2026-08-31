@@ -155,7 +155,7 @@ pub struct ServerDetailResponse {
     pub name: String,
     pub created_at: NaiveDateTime,
     pub channels: Vec<ChannelRecord>,
-    pub users: Vec<ServerMemberRecord>,
+    pub users: Vec<ServerMemberResponse>,
     pub roles: Vec<ServerRoleResponse>
 }
 

@@ -43,7 +43,13 @@ pub fn router() -> Router<AppState> {
         .route("/server/{server_id}/channels", get(get_server_channels).post(create_channel))
 }
 
-async fn get_servers(Extension(state): Extension<AppState>, user: CurrentUser) -> Result<Json<Vec<ServerDetailResponse>>> {
+#[utoipa::path(
+    get, path = "/servers", tag = "Servers", security(("bearer_auth" = [])),
+    responses((status = 200, description = "Servers visible to the current user", body = [crate::doc::schemas::ServerDetail]),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "Admin privileges required", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn get_servers(Extension(state): Extension<AppState>, user: CurrentUser) -> Result<Json<Vec<ServerDetailResponse>>> {
     require_admin(&user).await?;
     let server_ids = sqlx::query_scalar::<_, String>(
         r#"
@@ -65,7 +71,16 @@ async fn get_servers(Extension(state): Extension<AppState>, user: CurrentUser) -
     Ok(Json(servers))
 }
 
-async fn get_server(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>) -> Result<Json<ServerDetailResponse>> {
+#[utoipa::path(
+    get, path = "/servers/{server_id}", tag = "Servers", security(("bearer_auth" = [])),
+    params(("server_id" = String, Path, description = "Server UUID")),
+    responses((status = 200, description = "Server details", body = crate::doc::schemas::ServerDetail),
+              (status = 400, description = "Invalid server id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "Membership required", body = crate::doc::schemas::ErrorResponse),
+              (status = 404, description = "Server not found", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn get_server(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>) -> Result<Json<ServerDetailResponse>> {
     validate_uuid(&server_id)?;
 
     let access = load_server_access(&state, &server_id, &user.id).await?;
@@ -75,7 +90,12 @@ async fn get_server(Extension(state): Extension<AppState>, user: CurrentUser, Pa
     Ok(Json(load_server_detail(&state, &access.server.id).await?))
 }
 
-async fn create_server(Extension(state): Extension<AppState>, user: CurrentUser, Json(body): Json<CreateServerBody>) -> Result<Json<ServerSummary>> {
+#[utoipa::path(
+    post, path = "/servers", tag = "Servers", security(("bearer_auth" = [])), request_body = crate::doc::schemas::CreateServerBody,
+    responses((status = 200, description = "Created server", body = crate::doc::schemas::ServerSummary),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn create_server(Extension(state): Extension<AppState>, user: CurrentUser, Json(body): Json<CreateServerBody>) -> Result<Json<ServerSummary>> {
     let server_id = Uuid::new_v4().to_string();
     let mut transaction = state.pool.begin().await?;
     let server = sqlx::query_as::<_, ServerSummary>(
@@ -120,7 +140,16 @@ async fn create_server(Extension(state): Extension<AppState>, user: CurrentUser,
     Ok(Json(server))
 }
 
-async fn update_server(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>, Json(body): Json<UpdateServerBody>) -> Result<Json<ServerSummary>> {
+#[utoipa::path(
+    put, path = "/servers/{server_id}", tag = "Servers", security(("bearer_auth" = [])),
+    params(("server_id" = String, Path, description = "Server UUID")), request_body = crate::doc::schemas::UpdateServerBody,
+    responses((status = 200, description = "Updated server", body = crate::doc::schemas::ServerSummary),
+              (status = 400, description = "Invalid server id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "Manage server permission required", body = crate::doc::schemas::ErrorResponse),
+              (status = 404, description = "Server not found", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn update_server(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>, Json(body): Json<UpdateServerBody>) -> Result<Json<ServerSummary>> {
     validate_uuid(&server_id)?;
 
     let access = load_server_access(&state, &server_id, &user.id).await?;
@@ -144,7 +173,16 @@ async fn update_server(Extension(state): Extension<AppState>, user: CurrentUser,
     Ok(Json(server))
 }
 
-async fn delete_server(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>) -> Result<Json<ServerSummary>> {
+#[utoipa::path(
+    delete, path = "/servers/{server_id}", tag = "Servers", security(("bearer_auth" = [])),
+    params(("server_id" = String, Path, description = "Server UUID")),
+    responses((status = 200, description = "Deleted server", body = crate::doc::schemas::ServerSummary),
+              (status = 400, description = "Invalid server id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "Manage server permission required", body = crate::doc::schemas::ErrorResponse),
+              (status = 404, description = "Server not found", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn delete_server(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>) -> Result<Json<ServerSummary>> {
     validate_uuid(&server_id)?;
 
     let access = load_server_access(&state, &server_id, &user.id).await?;
@@ -166,7 +204,15 @@ async fn delete_server(Extension(state): Extension<AppState>, user: CurrentUser,
     Ok(Json(server))
 }
 
-async fn get_server_channels(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>) -> Result<Json<Vec<ChannelRecord>>> {
+#[utoipa::path(
+    get, path = "/servers/{server_id}/channels", tag = "Channels", security(("bearer_auth" = [])),
+    params(("server_id" = String, Path, description = "Server UUID")),
+    responses((status = 200, description = "Server channels", body = [crate::doc::schemas::Channel]),
+              (status = 400, description = "Invalid server id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "View channel permission required", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn get_server_channels(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>) -> Result<Json<Vec<ChannelRecord>>> {
     validate_uuid(&server_id)?;
 
     let access = load_server_access(&state, &server_id, &user.id).await?;
@@ -189,7 +235,15 @@ async fn get_server_channels(Extension(state): Extension<AppState>, user: Curren
     Ok(Json(channels))
 }
 
-async fn create_channel(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>, Json(body): Json<CreateChannelBody>,) -> Result<Json<ChannelRecord>> {
+#[utoipa::path(
+    post, path = "/servers/{server_id}/channels", tag = "Channels", security(("bearer_auth" = [])),
+    params(("server_id" = String, Path, description = "Server UUID")), request_body = crate::doc::schemas::CreateChannelBody,
+    responses((status = 200, description = "Created channel", body = crate::doc::schemas::Channel),
+              (status = 400, description = "Invalid server id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "Manage channels permission required", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn create_channel(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>, Json(body): Json<CreateChannelBody>,) -> Result<Json<ChannelRecord>> {
     validate_uuid(&server_id)?;
 
     let access = load_server_access(&state, &server_id, &user.id).await?;
@@ -250,17 +304,7 @@ async fn load_server_detail(state: &AppState, server_id: &str) -> Result<ServerD
     .fetch_all(&state.pool)
     .await?;
 
-    let users = sqlx::query_as::<_, ServerMemberRecord>(
-        r#"
-        SELECT server_id, user_id, role_id, joined_at
-        FROM "ServerUser"
-        WHERE server_id = $1
-        ORDER BY joined_at ASC
-        "#,
-    )
-    .bind(&server.id)
-    .fetch_all(&state.pool)
-    .await?;
+    let users = load_server_members(state, &server.id, &roles).await?;
 
     Ok(ServerDetailResponse {
         id: server.id,

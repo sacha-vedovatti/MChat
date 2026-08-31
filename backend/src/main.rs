@@ -11,6 +11,7 @@ mod error;
 mod models;
 mod permissions;
 mod routes;
+mod doc;
 
 use crate::app_state::AppState;
 use anyhow::Context;
@@ -19,6 +20,8 @@ use sqlx::postgres::PgPoolOptions;
 use std::{env, net::SocketAddr};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -35,6 +38,7 @@ async fn main() -> anyhow::Result<()> {
 
     let state = AppState::new(pool, jwt_secret);
     let app = routes::router()
+        .merge( SwaggerUi::new("/docs").url("/api-docs/openapi.json", doc::ApiDoc::openapi()))
         .layer(Extension(state.clone()))
         .layer(CorsLayer::permissive().allow_credentials(false))
         .layer(TraceLayer::new_for_http())

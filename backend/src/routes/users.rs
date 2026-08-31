@@ -42,15 +42,47 @@ pub fn router() -> Router<AppState> {
         .route("/user/{user_id}", get(get_user).put(update_user).delete(delete_user))
 }
 
-async fn get_me(Extension(state): Extension<AppState>, user: CurrentUser) -> Result<Json<PublicUser>> {
+#[utoipa::path(
+    get,
+    path = "/users/me",
+    tag = "Users",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Current user", body = crate::doc::schemas::PublicUser),
+        (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse)
+    )
+)]
+pub(crate) async fn get_me(Extension(state): Extension<AppState>, user: CurrentUser) -> Result<Json<PublicUser>> {
     Ok(Json(load_public_user(&state, &user.id).await?))
 }
 
-async fn update_me(Extension(state): Extension<AppState>, user: CurrentUser, Json(body): Json<UpdateUserBody>) -> Result<Json<PublicUser>> {
+#[utoipa::path(
+    put,
+    path = "/users/me",
+    tag = "Users",
+    security(("bearer_auth" = [])),
+    request_body = crate::doc::schemas::UpdateUserBody,
+    responses(
+        (status = 200, description = "Updated current user", body = crate::doc::schemas::PublicUser),
+        (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse)
+    )
+)]
+pub(crate) async fn update_me(Extension(state): Extension<AppState>, user: CurrentUser, Json(body): Json<UpdateUserBody>) -> Result<Json<PublicUser>> {
     update_user_common(&state, &user.id, body).await
 }
 
-async fn get_users(Extension(state): Extension<AppState>, user: CurrentUser) -> Result<Json<Vec<PublicUser>>> {
+#[utoipa::path(
+    get,
+    path = "/users",
+    tag = "Users",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "All users (admin only)", body = [crate::doc::schemas::PublicUser]),
+        (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+        (status = 403, description = "Admin privileges required", body = crate::doc::schemas::ErrorResponse)
+    )
+)]
+pub(crate) async fn get_users(Extension(state): Extension<AppState>, user: CurrentUser) -> Result<Json<Vec<PublicUser>>> {
     require_admin(&user).await?;
     let users = sqlx::query_as::<_, PublicUser>(
         r#"
@@ -65,13 +97,38 @@ async fn get_users(Extension(state): Extension<AppState>, user: CurrentUser) -> 
     Ok(Json(users))
 }
 
-async fn get_user(Extension(state): Extension<AppState>, user: CurrentUser, Path(user_id): Path<String>) -> Result<Json<PublicUser>> {
+#[utoipa::path(
+    get,
+    path = "/users/{user_id}",
+    tag = "Users",
+    security(("bearer_auth" = [])),
+    params(("user_id" = String, Path, description = "User UUID")),
+    responses(
+        (status = 200, description = "User", body = crate::doc::schemas::PublicUser),
+        (status = 400, description = "Invalid user id", body = crate::doc::schemas::ErrorResponse),
+        (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+        (status = 404, description = "User not found", body = crate::doc::schemas::ErrorResponse)
+    )
+)]
+pub(crate) async fn get_user(Extension(state): Extension<AppState>, user: CurrentUser, Path(user_id): Path<String>) -> Result<Json<PublicUser>> {
     // require_admin(&user).await?;
     validate_uuid(&user_id)?;
     Ok(Json(load_public_user(&state, &user_id).await?))
 }
 
-async fn create_user(Extension(state): Extension<AppState>, user: CurrentUser, Json(body): Json<CreateUserBody>) -> Result<Json<PublicUser>> {
+#[utoipa::path(
+    post,
+    path = "/users",
+    tag = "Users",
+    security(("bearer_auth" = [])),
+    request_body = crate::doc::schemas::CreateUserBody,
+    responses(
+        (status = 200, description = "Created user", body = crate::doc::schemas::PublicUser),
+        (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+        (status = 409, description = "User already exists", body = crate::doc::schemas::ErrorResponse)
+    )
+)]
+pub(crate) async fn create_user(Extension(state): Extension<AppState>, user: CurrentUser, Json(body): Json<CreateUserBody>) -> Result<Json<PublicUser>> {
     // require_admin(&user).await?;
     let user_id = Uuid::new_v4().to_string();
     let password = crate::auth::hash_password(&body.password)?;
@@ -93,13 +150,42 @@ async fn create_user(Extension(state): Extension<AppState>, user: CurrentUser, J
     Ok(Json(load_public_user(&state, &user_id).await?))
 }
 
-async fn update_user(Extension(state): Extension<AppState>, user: CurrentUser, Path(user_id): Path<String>, Json(body): Json<UpdateUserBody>) -> Result<Json<PublicUser>> {
+#[utoipa::path(
+    put,
+    path = "/users/{user_id}",
+    tag = "Users",
+    security(("bearer_auth" = [])),
+    params(("user_id" = String, Path, description = "User UUID")),
+    request_body = crate::doc::schemas::UpdateUserBody,
+    responses(
+        (status = 200, description = "Updated user", body = crate::doc::schemas::PublicUser),
+        (status = 400, description = "Invalid user id", body = crate::doc::schemas::ErrorResponse),
+        (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+        (status = 403, description = "Admin privileges required", body = crate::doc::schemas::ErrorResponse),
+        (status = 404, description = "User not found", body = crate::doc::schemas::ErrorResponse)
+    )
+)]
+pub(crate) async fn update_user(Extension(state): Extension<AppState>, user: CurrentUser, Path(user_id): Path<String>, Json(body): Json<UpdateUserBody>) -> Result<Json<PublicUser>> {
     require_admin(&user).await?;
     validate_uuid(&user_id)?;
     update_user_common(&state, &user_id, body).await
 }
 
-async fn delete_user(Extension(state): Extension<AppState>, user: CurrentUser, Path(user_id): Path<String>) -> Result<Json<PublicUser>> {
+#[utoipa::path(
+    delete,
+    path = "/users/{user_id}",
+    tag = "Users",
+    security(("bearer_auth" = [])),
+    params(("user_id" = String, Path, description = "User UUID")),
+    responses(
+        (status = 200, description = "Deleted user", body = crate::doc::schemas::PublicUser),
+        (status = 400, description = "Invalid user id", body = crate::doc::schemas::ErrorResponse),
+        (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+        (status = 403, description = "Admin privileges required", body = crate::doc::schemas::ErrorResponse),
+        (status = 404, description = "User not found", body = crate::doc::schemas::ErrorResponse)
+    )
+)]
+pub(crate) async fn delete_user(Extension(state): Extension<AppState>, user: CurrentUser, Path(user_id): Path<String>) -> Result<Json<PublicUser>> {
     require_admin(&user).await?;
     validate_uuid(&user_id)?;
 

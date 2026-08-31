@@ -36,7 +36,14 @@ pub fn router() -> Router<AppState> {
         .route("/servers/{server_id}/roles/{role_id}", put(update_role).delete(delete_role))
 }
 
-async fn get_roles(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>) -> Result<Json<Vec<ServerRoleResponse>>> {
+#[utoipa::path(get, path = "/servers/{server_id}/roles", tag = "Roles", security(("bearer_auth" = [])),
+    params(("server_id" = String, Path, description = "Server UUID")),
+    responses((status = 200, description = "Server roles", body = [crate::doc::schemas::ServerRole]),
+              (status = 400, description = "Invalid server id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "View channel permission required", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn get_roles(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>) -> Result<Json<Vec<ServerRoleResponse>>> {
     validate_uuid(&server_id)?;
 
     let access = load_server_access(&state, &server_id, &user.id).await?;
@@ -63,7 +70,14 @@ fn contains_privileged_permission(permissions: &[ServerPermission]) -> bool {
     permissions.iter().any(|p| matches!(p, ServerPermission::OWNER | ServerPermission::ADMIN))
 }
 
-async fn create_role(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>, Json(body): Json<CreateRoleBody>) -> Result<Json<ServerRoleResponse>> {
+#[utoipa::path(post, path = "/servers/{server_id}/roles", tag = "Roles", security(("bearer_auth" = [])),
+    params(("server_id" = String, Path, description = "Server UUID")), request_body = crate::doc::schemas::CreateRoleBody,
+    responses((status = 200, description = "Created role", body = crate::doc::schemas::ServerRole),
+              (status = 400, description = "Invalid server id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "Manage roles permission required", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn create_role(Extension(state): Extension<AppState>, user: CurrentUser, Path(server_id): Path<String>, Json(body): Json<CreateRoleBody>) -> Result<Json<ServerRoleResponse>> {
     validate_uuid(&server_id)?;
 
     let access = load_server_access(&state, &server_id, &user.id).await?;
@@ -92,7 +106,16 @@ async fn create_role(Extension(state): Extension<AppState>, user: CurrentUser, P
     Ok(Json(ServerRoleResponse::from(role)))
 }
 
-async fn update_role(Extension(state): Extension<AppState>, user: CurrentUser, Path((server_id, role_id)): Path<(String, i32)>, Json(body): Json<UpdateRoleBody>) -> Result<Json<ServerRoleResponse>> {
+#[utoipa::path(put, path = "/servers/{server_id}/roles/{role_id}", tag = "Roles", security(("bearer_auth" = [])),
+    params(("server_id" = String, Path, description = "Server UUID"), ("role_id" = i32, Path, description = "Role id")),
+    request_body = crate::doc::schemas::UpdateRoleBody,
+    responses((status = 200, description = "Updated role", body = crate::doc::schemas::ServerRole),
+              (status = 400, description = "Invalid server id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "Manage roles permission required", body = crate::doc::schemas::ErrorResponse),
+              (status = 404, description = "Role not found", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn update_role(Extension(state): Extension<AppState>, user: CurrentUser, Path((server_id, role_id)): Path<(String, i32)>, Json(body): Json<UpdateRoleBody>) -> Result<Json<ServerRoleResponse>> {
     validate_uuid(&server_id)?;
 
     let access = load_server_access(&state, &server_id, &user.id).await?;
@@ -125,7 +148,16 @@ async fn update_role(Extension(state): Extension<AppState>, user: CurrentUser, P
     Ok(Json(ServerRoleResponse::from(role)))
 }
 
-async fn delete_role(Extension(state): Extension<AppState>, user: CurrentUser, Path((server_id, role_id)): Path<(String, i32)>) -> Result<Json<ServerRoleResponse>> {
+#[utoipa::path(delete, path = "/servers/{server_id}/roles/{role_id}", tag = "Roles", security(("bearer_auth" = [])),
+    params(("server_id" = String, Path, description = "Server UUID"), ("role_id" = i32, Path, description = "Role id")),
+    responses((status = 200, description = "Deleted role", body = crate::doc::schemas::ServerRole),
+              (status = 400, description = "Invalid server id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "Manage roles permission required", body = crate::doc::schemas::ErrorResponse),
+              (status = 404, description = "Role not found", body = crate::doc::schemas::ErrorResponse),
+              (status = 409, description = "Default role cannot be deleted", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn delete_role(Extension(state): Extension<AppState>, user: CurrentUser, Path((server_id, role_id)): Path<(String, i32)>) -> Result<Json<ServerRoleResponse>> {
     validate_uuid(&server_id)?;
 
     let access = load_server_access(&state, &server_id, &user.id).await?;

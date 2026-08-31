@@ -29,7 +29,15 @@ pub fn router() -> Router<AppState> {
         .route("/channel/{channel_id}", put(update_channel).delete(delete_channel))
 }
 
-async fn update_channel(Extension(state): Extension<AppState>, user: CurrentUser, Path(channel_id): Path<String>, Json(body): Json<UpdateChannelBody>) -> Result<Json<ChannelRecord>> {
+#[utoipa::path(put, path = "/channels/{channel_id}", tag = "Channels", security(("bearer_auth" = [])),
+    params(("channel_id" = String, Path, description = "Channel UUID")), request_body = crate::doc::schemas::UpdateChannelBody,
+    responses((status = 200, description = "Updated channel", body = crate::doc::schemas::Channel),
+              (status = 400, description = "Invalid channel id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "Manage channels permission required", body = crate::doc::schemas::ErrorResponse),
+              (status = 404, description = "Channel not found", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn update_channel(Extension(state): Extension<AppState>, user: CurrentUser, Path(channel_id): Path<String>, Json(body): Json<UpdateChannelBody>) -> Result<Json<ChannelRecord>> {
     validate_uuid(&channel_id)?;
 
     let server_id = load_channel_server_id(&state, &channel_id).await?;
@@ -57,7 +65,15 @@ async fn update_channel(Extension(state): Extension<AppState>, user: CurrentUser
     Ok(Json(channel))
 }
 
-async fn delete_channel(Extension(state): Extension<AppState>, user: CurrentUser, Path(channel_id): Path<String>) -> Result<Json<ChannelRecord>> {
+#[utoipa::path(delete, path = "/channels/{channel_id}", tag = "Channels", security(("bearer_auth" = [])),
+    params(("channel_id" = String, Path, description = "Channel UUID")),
+    responses((status = 200, description = "Deleted channel", body = crate::doc::schemas::Channel),
+              (status = 400, description = "Invalid channel id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "Manage channels permission required", body = crate::doc::schemas::ErrorResponse),
+              (status = 404, description = "Channel not found", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn delete_channel(Extension(state): Extension<AppState>, user: CurrentUser, Path(channel_id): Path<String>) -> Result<Json<ChannelRecord>> {
     validate_uuid(&channel_id)?;
 
     let server_id = load_channel_server_id(&state, &channel_id).await?;
