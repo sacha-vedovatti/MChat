@@ -11,21 +11,24 @@ import { Plus } from "lucide-react";
 import { useAuth } from "../hooks/use-auth";
 import { getChannels, getMembers, getServers, createChannel, createServer } from "../lib/api/servers";
 import { deleteMessage, getMessages, sendMessage } from "../lib/api/messages";
-import type { Channel, Member, Message, Server } from "../lib/types";
+import type { Channel, Member, Message, Role, Server } from "../lib/types";
 import { LoginScreen } from "./login-screen";
 import { ServerRail } from "./server-rail";
 import { ChannelSidebar } from "./channel-sidebar";
 import { ChatView } from "./chat-view";
 import { MemberSidebar } from "./member-sidebar";
 import { UserSettingsModal } from "./user-settings";
+import { ServerSettingsModal } from "./server-settings";
 
 export function App() {
     const auth = useAuth();
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [serverSettingsOpen, setServerSettingsOpen] = useState(false);
     const [servers, setServers] = useState<Server[]>([]);
     const [activeServerId, setActiveServerId] = useState<string | null>(null);
     const [channels, setChannels] = useState<Record<string, Channel[]>>({});
     const [members, setMembers] = useState<Record<string, Member[]>>({});
+    const [roles, setRoles] = useState<Record<string, Role[]>>({});
     const [messages, setMessages] = useState<Record<string, Message[]>>({});
     const [activeChannelByServer, setActiveChannelByServer] = useState<Record<string, string>>({});
     const [membersShown, setMembersShown] = useState(true);
@@ -43,6 +46,7 @@ export function App() {
         getServers().then(async data => {
             const list = data.map(({ channels: _, users: __, roles: ___, ...s }) => s);
             setServers(list);
+            setRoles(Object.fromEntries(data.map(s => [s.id, s.roles])));
             if (list[0])
                 setActiveServerId(prev => prev ?? list[0].id);
             for (const s of list) {
@@ -101,6 +105,23 @@ export function App() {
         setActiveChannelByServer(prev => ({ ...prev, [activeServer.id]: ch.id }));
     }
 
+    function handleServerUpdated(updated: Server) {
+        setServers(prev => prev.map(s => (s.id === updated.id ? updated : s)));
+    }
+
+    function handleServerDeleted() {
+        if (!activeServer)
+            return;
+        const deletedId = activeServer.id;
+        setServerSettingsOpen(false);
+        setServers(prev => prev.filter(s => s.id !== deletedId));
+        setActiveServerId(prev => (prev === deletedId ? null : prev));
+    }
+
+    function handleRolesChanged(serverId: string, next: Role[]) {
+        setRoles(prev => ({ ...prev, [serverId]: next }));
+    }
+
     if (auth.loading)
         return <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">Chargement…</div>
     if (!auth.user)
@@ -109,5 +130,5 @@ export function App() {
         return <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">Chargement de MChat…</div>
     if (error && servers.length === 0)
         return <div className="flex min-h-screen items-center justify-center bg-background p-6"><div className="max-w-md rounded-xl border border-destructive/30 bg-card p-6"><h1 className="font-semibold">Impossible de charger MChat</h1><p className="mt-2 text-sm text-muted-foreground">{error}</p><button onClick={() => location.reload()} className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Réessayer</button></div></div>
-    return <div className="flex h-screen w-full overflow-hidden text-foreground"><ServerRail servers={servers} activeServerId={activeServerId} onSelect={setActiveServerId} onCreate={handleCreateServer} onLogout={auth.logout} />{activeServer && activeChannel ? <><ChannelSidebar server={activeServer} user={auth.user} channels={channels[activeServer.id] ?? []} activeChannelId={activeChannel.id} onSelect={id => setActiveChannelByServer(prev => ({ ...prev, [activeServer.id]: id }))} onCreateChannel={handleCreateChannel} onOpenSettings={() => setSettingsOpen(true)} /><ChatView channel={activeChannel} messages={messages[activeChannel.id] ?? []} members={members[activeServer.id] ?? []} currentUser={auth.user} onSend={handleSend} onDelete={handleDelete} onToggleMembers={() => setMembersShown(v => !v)} membersShown={membersShown} />{membersShown && <MemberSidebar members={members[activeServer.id] ?? []} />}</> : <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-background px-6 text-center"><div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary"><Plus className="h-8 w-8" /></div><h2 className="text-xl font-semibold">{servers.length ? "Aucun salon" : "Aucun serveur"}</h2><p className="max-w-sm text-sm text-muted-foreground">Crée un serveur ou un salon pour commencer à discuter.</p></div>}{settingsOpen && <UserSettingsModal user={auth.user} onClose={() => setSettingsOpen(false)} onUpdated={auth.setUser} onLogout={auth.logout} />}</div>
+    return <div className="flex h-screen w-full overflow-hidden text-foreground"><ServerRail servers={servers} activeServerId={activeServerId} onSelect={setActiveServerId} onCreate={handleCreateServer} onLogout={auth.logout} />{activeServer && activeChannel ? <><ChannelSidebar server={activeServer} user={auth.user} channels={channels[activeServer.id] ?? []} activeChannelId={activeChannel.id} onSelect={id => setActiveChannelByServer(prev => ({ ...prev, [activeServer.id]: id }))} onCreateChannel={handleCreateChannel} onOpenSettings={() => setSettingsOpen(true)} onOpenServerSettings={() => setServerSettingsOpen(true)} /><ChatView channel={activeChannel} messages={messages[activeChannel.id] ?? []} members={members[activeServer.id] ?? []} currentUser={auth.user} onSend={handleSend} onDelete={handleDelete} onToggleMembers={() => setMembersShown(v => !v)} membersShown={membersShown} />{membersShown && <MemberSidebar members={members[activeServer.id] ?? []} />}</> : <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-background px-6 text-center"><div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary"><Plus className="h-8 w-8" /></div><h2 className="text-xl font-semibold">{servers.length ? "Aucun salon" : "Aucun serveur"}</h2><p className="max-w-sm text-sm text-muted-foreground">Crée un serveur ou un salon pour commencer à discuter.</p></div>}{settingsOpen && <UserSettingsModal user={auth.user} onClose={() => setSettingsOpen(false)} onUpdated={auth.setUser} onLogout={auth.logout} />}{serverSettingsOpen && activeServer && <ServerSettingsModal server={activeServer} roles={roles[activeServer.id] ?? []} isOwner={activeServer.owner_id === auth.user.id} onClose={() => setServerSettingsOpen(false)} onServerUpdated={handleServerUpdated} onServerDeleted={handleServerDeleted} onRolesChanged={next => handleRolesChanged(activeServer.id, next)} />}</div>
 }

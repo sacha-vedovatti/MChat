@@ -14,3 +14,5 @@ export function ServerRail({ servers, activeServerId, onSelect, onCreate, onLogo
 
     return <nav className="flex w-[72px] shrink-0 flex-col items-center gap-2 bg-rail py-3"><>{button("Messages directs", activeServerId === null, onLogout, <MessageCircle className="h-5 w-5" />)}</><div className="my-1 h-px w-8 bg-border" /><div className="flex flex-1 flex-col items-center gap-2 overflow-y-auto">{servers.map(s => button(s.name, s.id === activeServerId, () => onSelect(s.id), s.name.slice(0, 2).toUpperCase()))}{button("Ajouter un serveur", false, onCreate, <Plus className="h-5 w-5" />)}{button("Explorer", false, () => { }, <Compass className="h-5 w-5" />)}</div><div className="my-1 h-px w-8 bg-border" /><button onClick={onLogout} aria-label="Se déconnecter" className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground"><LogOut className="h-5 w-5" /></button></nav>
 }
+
+/* !!!!! onlogout a modif */

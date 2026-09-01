@@ -1,3 +1,10 @@
+/*
+** EPITECH PROJECT, 2026
+** MChat
+** File description:
+** Server API routes
+*/
+
 import { apiFetch } from "./client";
 import type { Channel, Member, Role, Server } from "../types";
 
@@ -23,4 +30,12 @@ export function createServer(name: string) {
 
 export function createChannel(serverId: string, name: string, description?: string) {
     return apiFetch<Channel>(`/servers/${serverId}/channels`, { method: "POST", body: JSON.stringify({ name, description })});
+}
+
+export function deleteServer(serverId: string) {
+    return apiFetch<Server>(`/servers/${serverId}`, { method: 'DELETE' });
+}
+
+export function updateServer(serverId: string, name: string) {
+    return apiFetch<Server>(`/servers/${serverId}`, { method: 'PUT', body: JSON.stringify({ name })});
 }
