@@ -39,3 +39,16 @@ export function deleteServer(serverId: string) {
 export function updateServer(serverId: string, name: string) {
     return apiFetch<Server>(`/servers/${serverId}`, { method: 'PUT', body: JSON.stringify({ name })});
 }
+
+export function deleteChannel(channelId: string) {
+    return apiFetch<Channel>(`/channels/${channelId}`, { method: 'DELETE' });
+}
+
+export type UpdateChannelInput = {
+    name?: string;
+    description?: string;
+}
+
+export function updateChannel(channelId: string, input: UpdateChannelInput) {
+    return apiFetch<Channel>(`/channels/${channelId}`, { method: 'PUT', body: JSON.stringify(input) });
+}

@@ -19,11 +19,13 @@ import { ChatView } from "./chat-view";
 import { MemberSidebar } from "./member-sidebar";
 import { UserSettingsModal } from "./user-settings";
 import { ServerSettingsModal } from "./server-settings";
+import { ChannelEditModal } from "./channel-settings";
 
 export function App() {
     const auth = useAuth();
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [serverSettingsOpen, setServerSettingsOpen] = useState(false);
+    const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
     const [servers, setServers] = useState<Server[]>([]);
     const [activeServerId, setActiveServerId] = useState<string | null>(null);
     const [channels, setChannels] = useState<Record<string, Channel[]>>({});
@@ -122,6 +124,22 @@ export function App() {
         setRoles(prev => ({ ...prev, [serverId]: next }));
     }
 
+    function handleChannelUpdated(updated: Channel) {
+        setChannels(prev => ({ ...prev, [updated.server_id]: (prev[updated.server_id] ?? []).map(c => (c.id === updated.id ? updated : c)) }));
+        setEditingChannel(updated);
+    }
+
+    function handleChannelDeleted(channelId: string) {
+        if (!activeServer)
+            return;
+        setEditingChannel(null);
+        setChannels(prev => {
+            const remaining = (prev[activeServer.id] ?? []).filter(c => c.id !== channelId);
+            return { ...prev, [activeServer.id]: remaining };
+        });
+        setActiveChannelByServer(prev => (prev[activeServer.id] === channelId ? { ...prev, [activeServer.id]: "" } : prev));
+    }
+
     if (auth.loading)
         return <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">Chargement…</div>
     if (!auth.user)
@@ -130,5 +148,37 @@ export function App() {
         return <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">Chargement de MChat…</div>
     if (error && servers.length === 0)
         return <div className="flex min-h-screen items-center justify-center bg-background p-6"><div className="max-w-md rounded-xl border border-destructive/30 bg-card p-6"><h1 className="font-semibold">Impossible de charger MChat</h1><p className="mt-2 text-sm text-muted-foreground">{error}</p><button onClick={() => location.reload()} className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Réessayer</button></div></div>
-    return <div className="flex h-screen w-full overflow-hidden text-foreground"><ServerRail servers={servers} activeServerId={activeServerId} onSelect={setActiveServerId} onCreate={handleCreateServer} onLogout={auth.logout} />{activeServer && activeChannel ? <><ChannelSidebar server={activeServer} user={auth.user} channels={channels[activeServer.id] ?? []} activeChannelId={activeChannel.id} onSelect={id => setActiveChannelByServer(prev => ({ ...prev, [activeServer.id]: id }))} onCreateChannel={handleCreateChannel} onOpenSettings={() => setSettingsOpen(true)} onOpenServerSettings={() => setServerSettingsOpen(true)} /><ChatView channel={activeChannel} messages={messages[activeChannel.id] ?? []} members={members[activeServer.id] ?? []} currentUser={auth.user} onSend={handleSend} onDelete={handleDelete} onToggleMembers={() => setMembersShown(v => !v)} membersShown={membersShown} />{membersShown && <MemberSidebar members={members[activeServer.id] ?? []} />}</> : <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-background px-6 text-center"><div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary"><Plus className="h-8 w-8" /></div><h2 className="text-xl font-semibold">{servers.length ? "Aucun salon" : "Aucun serveur"}</h2><p className="max-w-sm text-sm text-muted-foreground">Crée un serveur ou un salon pour commencer à discuter.</p></div>}{settingsOpen && <UserSettingsModal user={auth.user} onClose={() => setSettingsOpen(false)} onUpdated={auth.setUser} onLogout={auth.logout} />}{serverSettingsOpen && activeServer && <ServerSettingsModal server={activeServer} roles={roles[activeServer.id] ?? []} isOwner={activeServer.owner_id === auth.user.id} onClose={() => setServerSettingsOpen(false)} onServerUpdated={handleServerUpdated} onServerDeleted={handleServerDeleted} onRolesChanged={next => handleRolesChanged(activeServer.id, next)} />}</div>
+    return <div className="flex h-screen w-full overflow-hidden text-foreground">
+        <ServerRail servers={servers} activeServerId={activeServerId} onSelect={setActiveServerId} onCreate={handleCreateServer} onLogout={auth.logout} />
+        {activeServer ? <>
+            <ChannelSidebar
+                server={activeServer}
+                user={auth.user}
+                channels={channels[activeServer.id] ?? []}
+                activeChannelId={activeChannel?.id ?? null}
+                isOwner={activeServer.owner_id === auth.user.id}
+                onSelect={id => setActiveChannelByServer(prev => ({ ...prev, [activeServer.id]: id }))}
+                onCreateChannel={handleCreateChannel}
+                onEditChannel={setEditingChannel}
+                onOpenSettings={() => setSettingsOpen(true)}
+                onOpenServerSettings={() => setServerSettingsOpen(true)}
+            />
+            {activeChannel ? <>
+                <ChatView channel={activeChannel} messages={messages[activeChannel.id] ?? []} members={members[activeServer.id] ?? []} currentUser={auth.user} onSend={handleSend} onDelete={handleDelete} onToggleMembers={() => setMembersShown(v => !v)} membersShown={membersShown} />
+                {membersShown && <MemberSidebar members={members[activeServer.id] ?? []} />}
+            </> : <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-background px-6 text-center">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary"><Plus className="h-8 w-8" /></div>
+                <h2 className="text-xl font-semibold">Aucun salon</h2>
+                <p className="max-w-sm text-sm text-muted-foreground">Ce serveur n’a pas encore de salon. Crée-en un depuis la sidebar pour commencer à discuter.</p>
+                <button onClick={handleCreateChannel} className="mt-2 inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground"><Plus className="h-4 w-4" /> Créer un salon</button>
+            </div>}
+        </> : <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-background px-6 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary"><Plus className="h-8 w-8" /></div>
+            <h2 className="text-xl font-semibold">Aucun serveur</h2>
+            <p className="max-w-sm text-sm text-muted-foreground">Crée un serveur pour commencer à discuter.</p>
+        </div>}
+        {settingsOpen && <UserSettingsModal user={auth.user} onClose={() => setSettingsOpen(false)} onUpdated={auth.setUser} onLogout={auth.logout} />}
+        {serverSettingsOpen && activeServer && <ServerSettingsModal server={activeServer} roles={roles[activeServer.id] ?? []} isOwner={activeServer.owner_id === auth.user.id} onClose={() => setServerSettingsOpen(false)} onServerUpdated={handleServerUpdated} onServerDeleted={handleServerDeleted} onRolesChanged={next => handleRolesChanged(activeServer.id, next)} />}
+        {editingChannel && <ChannelEditModal channel={editingChannel} onClose={() => setEditingChannel(null)} onUpdated={handleChannelUpdated} onDeleted={handleChannelDeleted} />}
+    </div>
 }
