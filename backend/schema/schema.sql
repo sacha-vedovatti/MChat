@@ -3,7 +3,7 @@ CREATE SCHEMA IF NOT EXISTS "public";
 -- Create enum type "UserRole"
 CREATE TYPE "public"."UserRole" AS ENUM ('USER', 'ADMIN');
 -- Create enum type "ServerPermissions"
-CREATE TYPE "public"."ServerPermissions" AS ENUM ('VIEW_CHANNEL', 'SEND_MESSAGES', 'MANAGE_MESSAGES', 'MANAGE_CHANNELS', 'MANAGE_SERVER', 'MANAGE_ROLES', 'INVITE_MEMBERS', 'KICK_MEMBERS', 'BAN_MEMBERS', 'ADD_REACTIONS', 'USE_EMOJIS', 'ATTACH_FILES', 'OWNER', 'ADMIN');
+CREATE TYPE "public"."ServerPermissions" AS ENUM ('VIEW_CHANNELS', 'SEND_MESSAGES', 'MANAGE_MESSAGES', 'MANAGE_CHANNELS', 'MANAGE_SERVER', 'MANAGE_ROLES', 'INVITE_MEMBERS', 'KICK_MEMBERS', 'BAN_MEMBERS', 'ADD_REACTIONS', 'USE_EMOJIS', 'ATTACH_FILES', 'OWNER', 'ADMIN');
 -- Create "User" table
 CREATE TABLE "public"."User" (
   "id" text NOT NULL,
@@ -83,6 +83,7 @@ CREATE INDEX "Message_sender_id_idx" ON "public"."Message" ("sender_id");
 CREATE TABLE "public"."ServerRole" (
   "id" serial NOT NULL,
   "name" text NOT NULL,
+  "color" text NOT NULL DEFAULT '#99AAB5',
   "permissions" "public"."ServerPermissions"[] NULL,
   "created_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "is_default" boolean NOT NULL DEFAULT false,

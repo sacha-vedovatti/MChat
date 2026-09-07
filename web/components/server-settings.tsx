@@ -139,7 +139,14 @@ function RolesTab({ server, roles, isOwner, onRolesChanged }: { server: Server; 
     setError("");
     setCreating(true);
     try {
-      const role = await createRole(server.id, { name: "new", permissions: [] });
+      const names = new Set(roles.map(role => role.name.toLowerCase()));
+      let name = "new";
+      let suffix = 2;
+      while (names.has(name)) {
+        name = `new ${suffix}`;
+        suffix += 1;
+      }
+      const role = await createRole(server.id, { name, permissions: [] });
       onRolesChanged([...roles, role]);
       setSelectedId(role.id);
     } catch (err) {
@@ -197,8 +204,8 @@ function RolesTab({ server, roles, isOwner, onRolesChanged }: { server: Server; 
           <li key={role.id}>
             <button onClick={() => setSelectedId(role.id)} className="flex w-full items-center justify-between rounded-md border border-border bg-card px-4 py-3 text-left text-sm hover:bg-accent">
               <span className="flex items-center gap-2 font-medium">
-                <span className="h-2.5 w-2.5 rounded-full bg-primary" />
-                {role.name}
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: role.color }} />
+                <span style={{ color: role.color }}>{role.name}</span>
                 {role.is_default && <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">Par défaut</span>}
               </span>
               <span className="text-xs text-muted-foreground">{role.permissions.length} permission{role.permissions.length > 1 ? "s" : ""}</span>
@@ -213,13 +220,14 @@ function RolesTab({ server, roles, isOwner, onRolesChanged }: { server: Server; 
 
 function RoleEditor({ server, role, isOwner, onBack, onSaved, onDelete }: { server: Server; role: Role; isOwner: boolean; onBack: () => void; onSaved: (role: Role) => void; onDelete: () => void }) {
   const [name, setName] = useState(role.name);
+  const [color, setColor] = useState(role.color);
   const [permissions, setPermissions] = useState<string[]>(role.permissions);
   const [isDefault, setIsDefault] = useState(role.is_default);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const dirty = name.trim() !== role.name || isDefault !== role.is_default || permissions.length !== role.permissions.length || permissions.some(p => !role.permissions.includes(p));
+  const dirty = name.trim() !== role.name || color !== role.color || isDefault !== role.is_default || permissions.length !== role.permissions.length || permissions.some(p => !role.permissions.includes(p));
 
   function togglePermission(key: string) {
     setPermissions(prev => (prev.includes(key) ? prev.filter(p => p !== key) : [...prev, key]));
@@ -235,6 +243,7 @@ function RoleEditor({ server, role, isOwner, onBack, onSaved, onDelete }: { serv
     try {
       const updated = await updateRole(server.id, role.id, {
         name: name.trim() !== role.name ? name.trim() : undefined,
+        color: color !== role.color ? color : undefined,
         permissions,
         is_default: isDefault !== role.is_default ? isDefault : undefined,
       });
@@ -257,6 +266,11 @@ function RoleEditor({ server, role, isOwner, onBack, onSaved, onDelete }: { serv
 
       <label className="mt-6 block text-sm">Nom du rôle
         <input value={name} onChange={e => setName(e.target.value)} required minLength={1} disabled={!isOwner} className="mt-1 h-10 w-full rounded-md border border-input bg-card px-3 outline-none focus:ring-2 focus:ring-ring disabled:opacity-60" />
+      </label>
+
+      <label className="mt-4 flex items-center gap-3 text-sm">Couleur du rôle
+        <input type="color" value={color} onChange={e => setColor(e.target.value)} disabled={!isOwner} className="h-9 w-14 cursor-pointer rounded border border-input bg-card p-1 disabled:opacity-60" />
+        <span className="font-mono text-xs text-muted-foreground">{color}</span>
       </label>
 
       <label className="mt-4 flex items-center gap-2.5 text-sm">

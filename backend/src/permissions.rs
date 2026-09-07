@@ -108,7 +108,7 @@ pub async fn load_channel_server_id(state: &AppState, channel_id: &str) -> Resul
 pub async fn load_server_default_role(state: &AppState, server_id: &str) -> Result<Option<ServerRoleRecord>> {
     let role = sqlx::query_as::<_, ServerRoleRecord>(
         r#"
-        SELECT id, server_id, name, permissions, is_default, position, created_at
+        SELECT id, server_id, name, color, permissions, is_default, position, created_at
         FROM "ServerRole"
         WHERE server_id = $1 AND is_default = true
         ORDER BY position ASC, id ASC

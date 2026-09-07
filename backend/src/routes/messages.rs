@@ -61,7 +61,7 @@ pub(crate) async fn get_messages(Extension(state): Extension<AppState>, user: Cu
 
     let server_id = load_channel_server_id(&state, &channel_id).await?;
     let access = load_server_access(&state, &server_id, &user.id).await?;
-    if !access.can(ServerPermission::VIEW_CHANNEL) {
+    if !access.can(ServerPermission::VIEW_CHANNELS) {
         return Err(AppError::Forbidden("view channel permission required".to_string()));
     }
 

@@ -19,7 +19,7 @@ export function MemberSidebar({ members }: { members: Member[] }) {
             continue;
         }
 
-        const g = groups.get(role.id.toString()) ?? { name: role.name, color: "var(--foreground)", members: [] };
+        const g = groups.get(role.id.toString()) ?? { name: role.name, color: role.color, members: [] };
         g.members.push(m);
         groups.set(role.id.toString(), g);
     }

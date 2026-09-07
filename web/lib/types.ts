@@ -31,6 +31,7 @@ export type Role = {
     id: number;
     server_id: string;
     name: string;
+    color: string;
     permissions: string[];
     is_default: boolean;
     position: number;

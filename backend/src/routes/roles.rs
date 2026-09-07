@@ -19,6 +19,7 @@ use uuid::Uuid;
 #[derive(Debug, Deserialize)]
 pub struct CreateRoleBody {
     pub name: String,
+    pub color: Option<String>,
     pub permissions: Vec<ServerPermission>,
     pub position: Option<i32>
 }
@@ -26,6 +27,7 @@ pub struct CreateRoleBody {
 #[derive(Debug, Deserialize)]
 pub struct UpdateRoleBody {
     pub name: Option<String>,
+    pub color: Option<String>,
     pub permissions: Option<Vec<ServerPermission>>,
     pub position: Option<i32>
 }
@@ -47,13 +49,13 @@ pub(crate) async fn get_roles(Extension(state): Extension<AppState>, user: Curre
     validate_uuid(&server_id)?;
 
     let access = load_server_access(&state, &server_id, &user.id).await?;
-    if !access.can(ServerPermission::VIEW_CHANNEL) {
+    if !access.can(ServerPermission::VIEW_CHANNELS) {
         return Err(AppError::Forbidden("view channel permission required".to_string()));
     }
 
     let roles = sqlx::query_as::<_, ServerRoleRecord>(
         r#"
-        SELECT id, server_id, name, permissions, is_default, position, created_at
+        SELECT id, server_id, name, color, permissions, is_default, position, created_at
         FROM "ServerRole"
         WHERE server_id = $1
         ORDER BY position ASC, id ASC
@@ -91,13 +93,14 @@ pub(crate) async fn create_role(Extension(state): Extension<AppState>, user: Cur
     let position = body.position.unwrap_or(0);
     let role = sqlx::query_as::<_, ServerRoleRecord>(
         r#"
-        INSERT INTO "ServerRole" (server_id, name, permissions, position, is_default)
-        VALUES ($1, $2, $3, $4, false)
-        RETURNING id, server_id, name, permissions, is_default, position, created_at
+        INSERT INTO "ServerRole" (server_id, name, color, permissions, position, is_default)
+        VALUES ($1, $2, COALESCE($3, '#99AAB5'), $4, $5, false)
+        RETURNING id, server_id, name, color, permissions, is_default, position, created_at
         "#,
     )
     .bind(&server_id)
     .bind(&body.name)
+    .bind(body.color)
     .bind(body.permissions)
     .bind(position)
     .fetch_one(&state.pool)
@@ -131,15 +134,17 @@ pub(crate) async fn update_role(Extension(state): Extension<AppState>, user: Cur
         UPDATE "ServerRole"
         SET
             name = COALESCE($3, name),
-            permissions = COALESCE($4, permissions),
-            position = COALESCE($5, position)
+            color = COALESCE($4, color),
+            permissions = COALESCE($5, permissions),
+            position = COALESCE($6, position)
         WHERE id = $1 AND server_id = $2
-        RETURNING id, server_id, name, permissions, is_default, position, created_at
+        RETURNING id, server_id, name, color, permissions, is_default, position, created_at
         "#,
     )
     .bind(role_id)
     .bind(&server_id)
     .bind(body.name)
+    .bind(body.color)
     .bind(body.permissions)
     .bind(body.position)
     .fetch_one(&state.pool)
@@ -167,7 +172,7 @@ pub(crate) async fn delete_role(Extension(state): Extension<AppState>, user: Cur
 
     let role = sqlx::query_as::<_, ServerRoleRecord>(
         r#"
-        SELECT id, server_id, name, permissions, is_default, position, created_at
+        SELECT id, server_id, name, color, permissions, is_default, position, created_at
         FROM "ServerRole"
         WHERE id = $1 AND server_id = $2
         "#,
@@ -198,7 +203,7 @@ pub(crate) async fn delete_role(Extension(state): Extension<AppState>, user: Cur
         r#"
         DELETE FROM "ServerRole"
         WHERE id = $1 AND server_id = $2
-        RETURNING id, server_id, name, permissions, is_default, position, created_at
+        RETURNING id, server_id, name, color, permissions, is_default, position, created_at
         "#,
     )
     .bind(role_id)

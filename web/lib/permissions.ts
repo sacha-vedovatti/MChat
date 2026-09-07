@@ -14,5 +14,5 @@ export const PERMISSIONS: { key: string; label: string; description: string }[] 
   { key: "BAN_MEMBERS", label: "Bannir des membres", description: "Bannir définitivement un membre du serveur." },
   { key: "MANAGE_MESSAGES", label: "Gérer les messages", description: "Supprimer les messages des autres membres." },
   { key: "SEND_MESSAGES", label: "Envoyer des messages", description: "Écrire dans les salons textuels." },
-  { key: "VIEW_CHANNEL", label: "Voir les salons", description: "Voir et lire les salons du serveur." }
+  { key: "VIEW_CHANNELS", label: "Voir les salons", description: "Voir et lire les salons du serveur." }
 ];

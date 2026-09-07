@@ -39,7 +39,7 @@ pub(crate) async fn get_members(Extension(state): Extension<AppState>, user: Cur
     validate_uuid(&server_id)?;
 
     let access = load_server_access(&state, &server_id, &user.id).await?;
-    if !access.can(ServerPermission::VIEW_CHANNEL) {
+    if !access.can(ServerPermission::VIEW_CHANNELS) {
         return Err(AppError::Forbidden("view channel permission required".to_string()));
     }
 
@@ -187,7 +187,7 @@ async fn load_members(state: &AppState, server_id: &str) -> Result<Vec<ServerMem
 
     let roles = sqlx::query_as::<_, crate::models::ServerRoleRecord>(
         r#"
-        SELECT id, server_id, name, permissions, is_default, position, created_at
+        SELECT id, server_id, name, color, permissions, is_default, position, created_at
         FROM "ServerRole"
         WHERE server_id = $1
         "#,

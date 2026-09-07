@@ -75,13 +75,13 @@ pub(crate) async fn get_servers(Extension(state): Extension<AppState>, user: Cur
 
 #[utoipa::path(
     get, path = "/servers/me", tag = "Servers", security(("bearer_auth" = [])),
-    responses((status = 200, description = "Servers the current user is a member of", body = [crate::doc::schemas::ServerSummary]),
+    responses((status = 200, description = "Servers the current user is a member of", body = [crate::doc::schemas::ServerDetail]),
               (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse))
 )]
-pub(crate) async fn get_my_servers(Extension(state): Extension<AppState>, user: CurrentUser) -> Result<Json<Vec<ServerSummary>>> {
-    let servers = sqlx::query_as::<_, ServerSummary>(
+pub(crate) async fn get_my_servers(Extension(state): Extension<AppState>, user: CurrentUser) -> Result<Json<Vec<ServerDetailResponse>>> {
+    let server_ids = sqlx::query_scalar::<_, String>(
         r#"
-        SELECT s.id, s.owner_id, s.name, s.created_at
+        SELECT s.id
         FROM "Server" s
         INNER JOIN "ServerUser" su ON su.server_id = s.id
         WHERE su.user_id = $1
@@ -91,6 +91,11 @@ pub(crate) async fn get_my_servers(Extension(state): Extension<AppState>, user: 
     .bind(&user.id)
     .fetch_all(&state.pool)
     .await?;
+
+    let mut servers = Vec::with_capacity(server_ids.len());
+    for server_id in server_ids {
+        servers.push(load_server_detail(&state, &server_id).await?);
+    }
 
     Ok(Json(servers))
 }
@@ -137,14 +142,14 @@ pub(crate) async fn create_server(Extension(state): Extension<AppState>, user: C
 
     let role = sqlx::query_as::<_, ServerRoleRecord>(
         r#"
-        INSERT INTO "ServerRole" (server_id, name, permissions, is_default, position)
-        VALUES ($1, $2, $3, true, 0)
-        RETURNING id, server_id, name, permissions, is_default, position, created_at
+        INSERT INTO "ServerRole" (server_id, name, color, permissions, is_default, position)
+        VALUES ($1, $2, '#99AAB5', $3, true, 0)
+        RETURNING id, server_id, name, color, permissions, is_default, position, created_at
         "#,
     )
     .bind(&server.id)
     .bind("@everyone")
-    .bind(vec![ServerPermission::VIEW_CHANNEL, ServerPermission::SEND_MESSAGES])
+    .bind(vec![ServerPermission::VIEW_CHANNELS, ServerPermission::SEND_MESSAGES])
     .fetch_one(&mut *transaction)
     .await?;
 
@@ -240,7 +245,7 @@ pub(crate) async fn get_server_channels(Extension(state): Extension<AppState>, u
     validate_uuid(&server_id)?;
 
     let access = load_server_access(&state, &server_id, &user.id).await?;
-    if !access.can(ServerPermission::VIEW_CHANNEL) {
+    if !access.can(ServerPermission::VIEW_CHANNELS) {
         return Err(AppError::Forbidden("view channel permission required".to_string()));
     }
 
@@ -318,7 +323,7 @@ async fn load_server_detail(state: &AppState, server_id: &str) -> Result<ServerD
 
     let roles = sqlx::query_as::<_, ServerRoleRecord>(
         r#"
-        SELECT id, server_id, name, permissions, is_default, position, created_at
+        SELECT id, server_id, name, color, permissions, is_default, position, created_at
         FROM "ServerRole"
         WHERE server_id = $1
         ORDER BY position ASC, id ASC

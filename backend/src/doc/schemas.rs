@@ -21,7 +21,7 @@ pub enum UserRole {
 pub enum ServerPermission {
     OWNER,
     ADMIN,
-    VIEW_CHANNEL,
+    VIEW_CHANNELS,
     SEND_MESSAGES,
     MANAGE_MESSAGES,
     MANAGE_CHANNELS,
@@ -128,6 +128,7 @@ pub struct ServerRole {
     pub id: i32,
     pub server_id: String,
     pub name: String,
+    pub color: String,
     pub permissions: Vec<ServerPermission>,
     pub is_default: bool,
     pub position: i32,
@@ -137,6 +138,7 @@ pub struct ServerRole {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CreateRoleBody {
     pub name: String,
+    pub color: Option<String>,
     pub permissions: Vec<ServerPermission>,
     pub position: Option<i32>
 }
@@ -144,6 +146,7 @@ pub struct CreateRoleBody {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct UpdateRoleBody {
     pub name: Option<String>,
+    pub color: Option<String>,
     pub permissions: Option<Vec<ServerPermission>>,
     pub position: Option<i32>
 }

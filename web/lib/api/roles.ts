@@ -14,6 +14,7 @@ export function getRoles(serverId: string) {
 
 export type CreateRoleInput = {
     name: string;
+    color?: string;
     permissions?: string[]
 }
 
@@ -23,6 +24,7 @@ export function createRole(serverId: string, input: CreateRoleInput) {
 
 export type UpdateRoleInput = Partial<{
     name: string;
+    color: string;
     permissions: string[];
     position: number;
     is_default: boolean
