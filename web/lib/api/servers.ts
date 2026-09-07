@@ -9,7 +9,7 @@ import { apiFetch } from "./client";
 import type { Channel, Member, Role, Server } from "../types";
 
 export function getServers() {
-    return apiFetch<Array<Server & { channels: Channel[]; users: unknown[]; roles: Role[] }>>("/servers");
+    return apiFetch<Array<Server & { channels: Channel[]; users: unknown[]; roles: Role[] }>>("/servers/me");
 }
 
 export function getServer(serverId: string) {
