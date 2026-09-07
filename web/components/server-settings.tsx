@@ -15,15 +15,7 @@ import { createRole, deleteRole, updateRole } from "@/lib/api/roles";
 
 type Tab = "overview" | "roles" | "danger";
 
-export function ServerSettingsModal({
-  server,
-  roles,
-  isOwner,
-  onClose,
-  onServerUpdated,
-  onServerDeleted,
-  onRolesChanged,
-}: {
+export function ServerSettingsModal({ server, roles, isOwner, onClose, onServerUpdated, onServerDeleted, onRolesChanged }: {
   server: Server;
   roles: Role[];
   isOwner: boolean;
@@ -137,7 +129,7 @@ function OverviewTab({ server, isOwner, onServerUpdated }: { server: Server; isO
 }
 
 function RolesTab({ server, roles, isOwner, onRolesChanged }: { server: Server; roles: Role[]; isOwner: boolean; onRolesChanged: (roles: Role[]) => void }) {
-  const [selectedId, setSelectedId] = useState<number | null>(roles[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const sorted = [...roles].sort((a, b) => a.position - b.position);
@@ -165,7 +157,7 @@ function RolesTab({ server, roles, isOwner, onRolesChanged }: { server: Server; 
       await deleteRole(server.id, role.id);
       const next = roles.filter(r => r.id !== role.id);
       onRolesChanged(next);
-      setSelectedId(next[0]?.id ?? null);
+      setSelectedId(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible de supprimer le rôle");
     }
