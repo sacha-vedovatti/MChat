@@ -13,12 +13,17 @@ use crate::{
     permissions::{load_channel_server_id, load_server_access},
 };
 
-use axum::{extract::{Extension, Path, Query}, routing::{delete, get}, Json, Router};
+use axum::{extract::{Extension, Path, Query}, routing::{delete, get, put}, Json, Router};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 pub struct CreateMessageBody {
+    pub content: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateMessageBody {
     pub content: String,
 }
 
@@ -39,7 +44,7 @@ pub struct MessagePageResponse {
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/channels/{channel_id}/messages", get(get_messages).post(create_message))
-        .route("/messages/{message_id}", delete(delete_message))
+        .route("/messages/{message_id}", put(update_message).delete(delete_message))
 }
 
 #[utoipa::path(get, path = "/channels/{channel_id}/messages", tag = "Messages", security(("bearer_auth" = [])),
@@ -128,6 +133,49 @@ pub(crate) async fn create_message(Extension(state): Extension<AppState>, user: 
     .await?;
 
     Ok(Json(MessageResponse::from(message)))
+}
+
+#[utoipa::path(
+    put, path = "/messages/{message_id}", tag = "Messages", security(("bearer_auth" = [])),
+    params(("message_id" = String, Path, description = "Message UUID")), request_body = crate::doc::schemas::UpdateMessageBody,
+    responses((status = 200, description = "Updated message", body = crate::doc::schemas::Message),
+              (status = 400, description = "Invalid message id", body = crate::doc::schemas::ErrorResponse),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+              (status = 403, description = "Cannot edit this message", body = crate::doc::schemas::ErrorResponse),
+              (status = 404, description = "Message not found", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn update_message(Extension(state): Extension<AppState>, user: CurrentUser, Path(message_id): Path<String>, Json(body): Json<UpdateMessageBody>) -> Result<Json<MessageResponse>> {
+    validate_uuid(&message_id)?;
+
+    let message = sqlx::query_as::<_, MessageRecord>(
+        r#"
+        SELECT id, channel_id, sender_id, content, created_at
+        FROM "Message"
+        WHERE id = $1
+        "#,
+    )
+    .bind(&message_id)
+    .fetch_one(&state.pool)
+    .await?;
+
+    if message.sender_id != user.id {
+        return Err(AppError::Forbidden("cannot edit this message".to_string()));
+    }
+
+    let updated = sqlx::query_as::<_, MessageRecord>(
+        r#"
+        UPDATE "Message"
+        SET content = $2
+        WHERE id = $1
+        RETURNING id, channel_id, sender_id, content, created_at
+        "#,
+    )
+    .bind(&message_id)
+    .bind(&body.content)
+    .fetch_one(&state.pool)
+    .await?;
+
+    Ok(Json(MessageResponse::from(updated)))
 }
 
 #[utoipa::path(

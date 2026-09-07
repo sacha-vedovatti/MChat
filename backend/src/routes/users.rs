@@ -34,10 +34,10 @@ pub struct UpdateUserBody {
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/users/me", get(get_me).put(update_me))
+        .route("/users/me", get(get_me).put(update_me).delete(delete_me))
         .route("/users", get(get_users).post(create_user))
         .route("/users/{user_id}", get(get_user).put(update_user).delete(delete_user))
-        .route("/user/me", get(get_me).put(update_me))
+        .route("/user/me", get(get_me).put(update_me).delete(delete_me))
         .route("/user", get(get_users).post(create_user))
         .route("/user/{user_id}", get(get_user).put(update_user).delete(delete_user))
 }
@@ -69,6 +69,33 @@ pub(crate) async fn get_me(Extension(state): Extension<AppState>, user: CurrentU
 )]
 pub(crate) async fn update_me(Extension(state): Extension<AppState>, user: CurrentUser, Json(body): Json<UpdateUserBody>) -> Result<Json<PublicUser>> {
     update_user_common(&state, &user.id, body).await
+}
+
+#[utoipa::path(
+    delete,
+    path = "/users/me",
+    tag = "Users",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Deleted current user", body = crate::doc::schemas::PublicUser),
+        (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse),
+        (status = 404, description = "User not found", body = crate::doc::schemas::ErrorResponse)
+    )
+)]
+pub(crate) async fn delete_me(Extension(state): Extension<AppState>, user: CurrentUser) -> Result<Json<PublicUser>> {
+    let deleted = sqlx::query_as::<_, PublicUser>(
+        r#"
+        DELETE FROM "User"
+        WHERE id = $1
+        RETURNING id, email, username, avatar_url
+        "#,
+    )
+    .bind(&user.id)
+    .fetch_optional(&state.pool)
+    .await?
+    .ok_or_else(|| AppError::NotFound("user not found".to_string()))?;
+
+    Ok(Json(deleted))
 }
 
 #[utoipa::path(

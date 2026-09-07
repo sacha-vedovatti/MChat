@@ -176,6 +176,12 @@ pub struct CreateMessageBody {
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct UpdateMessageBody {
+    #[schema(example = "Hello from MChat, edited!")]
+    pub content: String
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct PaginationQuery {
     #[schema(example = 1)]
     pub page: Option<u32>,

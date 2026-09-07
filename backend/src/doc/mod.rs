@@ -43,7 +43,9 @@ use utoipa::openapi::security::{HttpBuilder, HttpAuthScheme, SecurityScheme};
         crate::routes::users::create_user,
         crate::routes::users::update_user,
         crate::routes::users::delete_user,
+        crate::routes::users::delete_me,
         crate::routes::servers::get_servers,
+        crate::routes::servers::get_my_servers,
         crate::routes::servers::get_server,
         crate::routes::servers::create_server,
         crate::routes::servers::update_server,
@@ -62,6 +64,7 @@ use utoipa::openapi::security::{HttpBuilder, HttpAuthScheme, SecurityScheme};
         crate::routes::roles::delete_role,
         crate::routes::messages::get_messages,
         crate::routes::messages::create_message,
+        crate::routes::messages::update_message,
         crate::routes::messages::delete_message
     ),
     components(
@@ -89,6 +92,7 @@ use utoipa::openapi::security::{HttpBuilder, HttpAuthScheme, SecurityScheme};
             schemas::UpdateMemberBody,
             schemas::Message,
             schemas::CreateMessageBody,
+            schemas::UpdateMessageBody,
             schemas::PaginationQuery,
             schemas::MessagePageResponse,
             schemas::ErrorResponse

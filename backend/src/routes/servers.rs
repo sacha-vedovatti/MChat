@@ -9,8 +9,8 @@ use crate::{
     app_state::AppState,
     auth::{load_public_user, require_admin, CurrentUser},
     error::{AppError, Result},
-    models::{ChannelRecord, ServerDetailResponse, ServerMemberRecord, ServerMemberResponse, ServerPermission, ServerRoleRecord, ServerRoleResponse, ServerSummary},
-    permissions::load_server_access,
+    models::{ChannelRecord, ServerDetailResponse, ServerMemberResponse, ServerPermission, ServerRoleRecord, ServerRoleResponse, ServerSummary},
+    permissions::load_server_access
 };
 
 use axum::{extract::{Extension, Path}, routing::get, Json, Router};
@@ -36,9 +36,11 @@ pub struct CreateChannelBody {
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/servers", get(get_servers).post(create_server))
+        .route("/servers/me", get(get_my_servers))
         .route("/servers/{server_id}", get(get_server).put(update_server).delete(delete_server))
         .route("/servers/{server_id}/channels", get(get_server_channels).post(create_channel))
         .route("/server", get(get_servers).post(create_server))
+        .route("/server/me", get(get_my_servers))
         .route("/server/{server_id}", get(get_server).put(update_server).delete(delete_server))
         .route("/server/{server_id}/channels", get(get_server_channels).post(create_channel))
 }
@@ -68,6 +70,28 @@ pub(crate) async fn get_servers(Extension(state): Extension<AppState>, user: Cur
     for server_id in server_ids {
         servers.push(load_server_detail(&state, &server_id).await?);
     }
+    Ok(Json(servers))
+}
+
+#[utoipa::path(
+    get, path = "/servers/me", tag = "Servers", security(("bearer_auth" = [])),
+    responses((status = 200, description = "Servers the current user is a member of", body = [crate::doc::schemas::ServerSummary]),
+              (status = 401, description = "Authentication required", body = crate::doc::schemas::ErrorResponse))
+)]
+pub(crate) async fn get_my_servers(Extension(state): Extension<AppState>, user: CurrentUser) -> Result<Json<Vec<ServerSummary>>> {
+    let servers = sqlx::query_as::<_, ServerSummary>(
+        r#"
+        SELECT s.id, s.owner_id, s.name, s.created_at
+        FROM "Server" s
+        INNER JOIN "ServerUser" su ON su.server_id = s.id
+        WHERE su.user_id = $1
+        ORDER BY s.created_at ASC
+        "#,
+    )
+    .bind(&user.id)
+    .fetch_all(&state.pool)
+    .await?;
+
     Ok(Json(servers))
 }
 
