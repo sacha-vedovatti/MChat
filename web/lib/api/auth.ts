@@ -37,9 +37,6 @@ export function updateProfile(input: UpdateProfileInput) {
   return apiFetch<User>("/users/me", { method: "PUT", body: JSON.stringify(input) });
 }
 
-export function deleteAccount(currentPassword: string) {
-  return apiFetch<User>("/users/me", {
-    method: "DELETE",
-    body: JSON.stringify({ current_password: currentPassword }),
-  });
+export function deleteAccount() {
+  return apiFetch<User>("/users/me", { method: "DELETE" });
 }

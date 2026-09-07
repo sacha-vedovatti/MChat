@@ -274,7 +274,6 @@ function PasswordTab() {
 }
 
 function DangerTab({ onLogout }: { onLogout: () => void }) {
-  const [currentPassword, setCurrentPassword] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -288,7 +287,7 @@ function DangerTab({ onLogout }: { onLogout: () => void }) {
     setBusy(true);
     setError("");
     try {
-      await deleteAccount(currentPassword);
+      await deleteAccount();
       clearToken();
       onLogout();
     } catch (err) {
@@ -303,14 +302,9 @@ function DangerTab({ onLogout }: { onLogout: () => void }) {
       <p className="mt-1 text-sm text-muted-foreground">La suppression de ton compte est définitive et irréversible.</p>
 
       <div className="mt-6 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
-        <label className="block text-sm">Confirme ton mot de passe pour supprimer ton compte
-          <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required className="mt-1 h-10 w-full rounded-md border border-input bg-card px-3 outline-none focus:ring-2 focus:ring-ring" />
-        </label>
-
         {error && <p className="mt-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
-
         <div className="mt-4 flex justify-end">
-          <button type="submit" disabled={busy || !currentPassword} className="h-10 rounded-md bg-destructive px-5 text-sm font-semibold text-white disabled:opacity-40">
+          <button type="submit" disabled={busy} className="h-10 rounded-md bg-destructive px-5 text-sm font-semibold text-white disabled:opacity-40">
             {busy ? "Suppression…" : confirming ? "Confirmer la suppression" : "Supprimer mon compte"}
           </button>
         </div>
