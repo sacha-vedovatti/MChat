@@ -17,10 +17,6 @@ export const PERMISSIONS: { key: string; label: string; description: string }[] 
   { key: "VIEW_CHANNELS", label: "Voir les salons", description: "Voir et lire les salons du serveur." }
 ];
 
-// Un membre a la permission `key` s'il possède ADMIN (accès total) ou la
-// permission précise sur son rôle. Un membre sans rôle n'a aucune permission.
-export function hasPermission(role: { permissions: string[] } | null | undefined, key: string) {
-  if (!role)
-    return false;
-  return role.permissions.includes("ADMIN") || role.permissions.includes(key);
+export function hasPermission(roles: { permissions: string[] }[] | null | undefined, key: string) {
+  return roles?.some(role => role.permissions.includes("ADMIN") || role.permissions.includes(key)) ?? false;
 }

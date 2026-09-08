@@ -90,7 +90,14 @@ pub(crate) async fn create_role(Extension(state): Extension<AppState>, user: Cur
         return Err(AppError::Forbidden("Permission missing.".to_string()))
     }
 
-    let position = body.position.unwrap_or(0);
+    let next_position = sqlx::query_scalar::<_, Option<i32>>(
+        "SELECT MAX(position) FROM \"ServerRole\" WHERE server_id = $1",
+    )
+    .bind(&server_id)
+    .fetch_one(&state.pool)
+    .await?
+    .unwrap_or(-1) + 1;
+    let position = body.position.unwrap_or(next_position);
     let role = sqlx::query_as::<_, ServerRoleRecord>(
         r#"
         INSERT INTO "ServerRole" (server_id, name, color, permissions, position, is_default)
@@ -127,6 +134,23 @@ pub(crate) async fn update_role(Extension(state): Extension<AppState>, user: Cur
     }
     if !access.is_owner && contains_privileged_permission(&body.permissions.as_deref().unwrap_or(&[])) {
         return Err(AppError::Forbidden("Permission missing.".to_string()))
+    }
+
+    let existing = sqlx::query_as::<_, ServerRoleRecord>(
+        r#"
+        SELECT id, server_id, name, color, permissions, is_default, position, created_at
+        FROM "ServerRole"
+        WHERE id = $1 AND server_id = $2
+        "#,
+    )
+    .bind(role_id)
+    .bind(&server_id)
+    .fetch_optional(&state.pool)
+    .await?
+    .ok_or_else(|| AppError::NotFound("role not found".to_string()))?;
+
+    if existing.is_default && (body.name.is_some() || body.color.is_some()) {
+        return Err(AppError::Forbidden("the @everyone role name and color cannot be changed".to_string()));
     }
 
     let role = sqlx::query_as::<_, ServerRoleRecord>(
@@ -187,9 +211,16 @@ pub(crate) async fn delete_role(Extension(state): Extension<AppState>, user: Cur
     if let Some(default_role) = load_server_default_role(&state, &server_id).await? {
         sqlx::query(
             r#"
-            UPDATE "ServerUser"
-            SET role_id = $3
-            WHERE server_id = $1 AND role_id = $2
+            INSERT INTO "ServerUserRole" (server_id, user_id, role_id)
+            SELECT sur.server_id, sur.user_id, $3
+            FROM "ServerUserRole" sur
+            WHERE sur.server_id = $1 AND sur.role_id = $2
+              AND NOT EXISTS (
+                  SELECT 1 FROM "ServerUserRole" existing
+                  WHERE existing.server_id = sur.server_id
+                    AND existing.user_id = sur.user_id
+                    AND existing.role_id = $3
+              )
             "#,
         )
         .bind(&server_id)
@@ -198,6 +229,11 @@ pub(crate) async fn delete_role(Extension(state): Extension<AppState>, user: Cur
         .execute(&state.pool)
         .await?;
     }
+    sqlx::query("DELETE FROM \"ServerUserRole\" WHERE server_id = $1 AND role_id = $2")
+        .bind(&server_id)
+        .bind(role_id)
+        .execute(&state.pool)
+        .await?;
 
     let deleted = sqlx::query_as::<_, ServerRoleRecord>(
         r#"

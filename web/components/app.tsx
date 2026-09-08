@@ -214,7 +214,7 @@ export function App() {
             server={activeServer}
             roles={roles[activeServer.id] ?? []}
             currentUser={auth.user}
-            currentUserRole={currentMember?.role ?? null}
+            currentUserRoles={currentMember?.roles ?? []}
             isOwner={activeServer.owner_id === auth.user.id}
             onClose={() => setContextMenu(null)}
             onOpenProfile={member => { setContextMenu(null); setProfileMember(member); }}

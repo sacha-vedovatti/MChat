@@ -19,7 +19,7 @@ use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateMemberBody {
-    pub role_id: Option<i32>,
+    pub role_ids: Vec<i32>,
 }
 
 pub fn router() -> Router<AppState> {
@@ -64,15 +64,19 @@ pub(crate) async fn join_server(Extension(state): Extension<AppState>, user: Cur
     let default_role = load_server_default_role(&state, &server_id).await?;
     sqlx::query(
         r#"
-        INSERT INTO "ServerUser" (server_id, user_id, role_id)
-        VALUES ($1, $2, $3)
+        INSERT INTO "ServerUser" (server_id, user_id)
+        VALUES ($1, $2)
         "#,
     )
     .bind(&server_id)
     .bind(&user.id)
-    .bind(default_role.as_ref().map(|role| role.id))
     .execute(&state.pool)
     .await?;
+
+    if let Some(role) = default_role {
+        sqlx::query("INSERT INTO \"ServerUserRole\" (server_id, user_id, role_id) VALUES ($1, $2, $3)")
+            .bind(&server_id).bind(&user.id).bind(role.id).execute(&state.pool).await?;
+    }
 
     load_member(&state, &server_id, &user.id).await
 }
@@ -98,7 +102,13 @@ pub(crate) async fn update_member_role(Extension(state): Extension<AppState>, us
         return Err(AppError::Forbidden("manage roles permission required".to_string()));
     }
 
-    if let Some(role_id) = body.role_id {
+    let default_role = load_server_default_role(&state, &server_id).await?
+        .ok_or_else(|| AppError::Conflict("server has no @everyone role".to_string()))?;
+    let mut role_ids = body.role_ids;
+    if !role_ids.contains(&default_role.id) {
+        role_ids.push(default_role.id);
+    }
+    for role_id in &role_ids {
         let role_exists = sqlx::query_scalar::<_, i32>(
             r#"
             SELECT id
@@ -116,18 +126,14 @@ pub(crate) async fn update_member_role(Extension(state): Extension<AppState>, us
         }
     }
 
-    sqlx::query(
-        r#"
-        UPDATE "ServerUser"
-        SET role_id = $3
-        WHERE server_id = $1 AND user_id = $2
-        "#,
-    )
-    .bind(&server_id)
-    .bind(&target_user_id)
-    .bind(body.role_id)
-    .execute(&state.pool)
-    .await?;
+    let mut transaction = state.pool.begin().await?;
+    sqlx::query("DELETE FROM \"ServerUserRole\" WHERE server_id = $1 AND user_id = $2")
+        .bind(&server_id).bind(&target_user_id).execute(&mut *transaction).await?;
+    for role_id in role_ids {
+        sqlx::query("INSERT INTO \"ServerUserRole\" (server_id, user_id, role_id) VALUES ($1, $2, $3)")
+            .bind(&server_id).bind(&target_user_id).bind(role_id).execute(&mut *transaction).await?;
+    }
+    transaction.commit().await?;
 
     load_member(&state, &server_id, &target_user_id).await
 }
@@ -175,9 +181,14 @@ pub(crate) async fn kick_member(Extension(state): Extension<AppState>, user: Cur
 async fn load_members(state: &AppState, server_id: &str) -> Result<Vec<ServerMemberResponse>> {
     let rows = sqlx::query_as::<_, ServerMemberRecord>(
         r#"
-        SELECT server_id, user_id, role_id, joined_at
-        FROM "ServerUser"
-        WHERE server_id = $1
+         SELECT su.server_id, su.user_id,
+             COALESCE(array_agg(sur.role_id ORDER BY sr.position, sr.id) FILTER (WHERE sur.role_id IS NOT NULL), ARRAY[]::integer[]) AS role_ids,
+             su.joined_at
+         FROM "ServerUser" su
+         LEFT JOIN "ServerUserRole" sur ON sur.server_id = su.server_id AND sur.user_id = su.user_id
+         LEFT JOIN "ServerRole" sr ON sr.id = sur.role_id
+         WHERE su.server_id = $1
+         GROUP BY su.server_id, su.user_id, su.joined_at
         ORDER BY joined_at ASC
         "#,
     )
@@ -199,14 +210,14 @@ async fn load_members(state: &AppState, server_id: &str) -> Result<Vec<ServerMem
     let mut members = Vec::with_capacity(rows.len());
     for row in rows {
         let user = crate::auth::load_public_user(state, &row.user_id).await?;
-        let role = row
-            .role_id
-            .and_then(|role_id| roles.iter().find(|role| role.id == role_id).cloned())
-            .map(ServerRoleResponse::from);
+        let member_roles = row.role_ids.iter()
+            .filter_map(|role_id| roles.iter().find(|role| role.id == *role_id).cloned())
+            .map(ServerRoleResponse::from)
+            .collect();
 
         members.push(ServerMemberResponse {
             user,
-            role,
+            roles: member_roles,
             joined_at: row.joined_at,
         });
     }

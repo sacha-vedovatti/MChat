@@ -7,7 +7,7 @@
 
 "use client";
 import { FormEvent, useEffect, useState } from "react";
-import { X, Info, ShieldCheck, ShieldAlert, Check, Plus, Trash2, ChevronLeft } from "lucide-react";
+import { X, Info, ShieldCheck, ShieldAlert, Check, Plus, Trash2, ChevronLeft, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
 import { deleteServer, updateServer } from "../lib/api/servers";
 import { PERMISSIONS } from "../lib/permissions";
 import type { Role, Server } from "../lib/types";
@@ -131,6 +131,9 @@ function OverviewTab({ server, isOwner, onServerUpdated }: { server: Server; isO
 function RolesTab({ server, roles, isOwner, onRolesChanged }: { server: Server; roles: Role[]; isOwner: boolean; onRolesChanged: (roles: Role[]) => void }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
+  const [movingId, setMovingId] = useState<number | null>(null);
+  const [draggedId, setDraggedId] = useState<number | null>(null);
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const sorted = [...roles].sort((a, b) => a.position - b.position);
   const selected = sorted.find(r => r.id === selectedId) ?? null;
@@ -170,6 +173,66 @@ function RolesTab({ server, roles, isOwner, onRolesChanged }: { server: Server; 
     }
   }
 
+  async function handleMove(role: Role, direction: -1 | 1) {
+    const index = sorted.findIndex(currentRole => currentRole.id === role.id);
+    const target = sorted[index + direction];
+    if (!target || movingId !== null)
+      return;
+
+    setMovingId(role.id);
+    setError("");
+    try {
+      const [updatedRole, updatedTarget] = await Promise.all([
+        updateRole(server.id, role.id, { position: target.position }),
+        updateRole(server.id, target.id, { position: role.position }),
+      ]);
+      onRolesChanged(roles.map(currentRole => {
+        if (currentRole.id === updatedRole.id)
+          return updatedRole;
+        if (currentRole.id === updatedTarget.id)
+          return updatedTarget;
+        return currentRole;
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible de déplacer le rôle");
+    } finally {
+      setMovingId(null);
+    }
+  }
+
+  async function handleDrop(targetId: number) {
+    if (draggedId === null || draggedId === targetId || movingId !== null)
+      return;
+
+    const sourceIndex = sorted.findIndex(role => role.id === draggedId);
+    const targetIndex = sorted.findIndex(role => role.id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0)
+      return;
+
+    const reordered = [...sorted];
+    const [draggedRole] = reordered.splice(sourceIndex, 1);
+    reordered.splice(targetIndex, 0, draggedRole);
+    const updates = reordered
+      .map((role, index) => ({ role, position: index }))
+      .filter(({ role, position }) => role.position !== position);
+
+    setMovingId(draggedId);
+    setError("");
+    try {
+      const updatedRoles = await Promise.all(
+        updates.map(({ role, position }) => updateRole(server.id, role.id, { position })),
+      );
+      const updatedById = new Map(updatedRoles.map(role => [role.id, role]));
+      onRolesChanged(reordered.map(role => updatedById.get(role.id) ?? role));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible de déplacer le rôle");
+    } finally {
+      setMovingId(null);
+      setDraggedId(null);
+      setDragOverId(null);
+    }
+  }
+
   if (selected) {
     return (
       <RoleEditor
@@ -201,8 +264,33 @@ function RolesTab({ server, roles, isOwner, onRolesChanged }: { server: Server; 
 
       <ul className="mt-5 space-y-1">
         {sorted.map(role => (
-          <li key={role.id}>
-            <button onClick={() => setSelectedId(role.id)} className="flex w-full items-center justify-between rounded-md border border-border bg-card px-4 py-3 text-left text-sm hover:bg-accent">
+          <li
+            key={role.id}
+            draggable={isOwner && movingId === null}
+            onDragStart={event => {
+              if (!isOwner)
+                return;
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData("text/plain", String(role.id));
+              setDraggedId(role.id);
+            }}
+            onDragOver={event => {
+              event.preventDefault();
+              if (draggedId !== role.id)
+                setDragOverId(role.id);
+            }}
+            onDrop={event => {
+              event.preventDefault();
+              void handleDrop(role.id);
+            }}
+            onDragEnd={() => {
+              setDraggedId(null);
+              setDragOverId(null);
+            }}
+            className={`flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent ${draggedId === role.id ? "opacity-50" : ""} ${dragOverId === role.id ? "border-primary" : ""}`}
+          >
+            {isOwner && <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing" aria-label="Déplacer le rôle" />}
+            <button onClick={() => setSelectedId(role.id)} className="flex min-w-0 flex-1 items-center justify-between py-1 text-left">
               <span className="flex items-center gap-2 font-medium">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: role.color }} />
                 <span style={{ color: role.color }}>{role.name}</span>
@@ -210,6 +298,16 @@ function RolesTab({ server, roles, isOwner, onRolesChanged }: { server: Server; 
               </span>
               <span className="text-xs text-muted-foreground">{role.permissions.length} permission{role.permissions.length > 1 ? "s" : ""}</span>
             </button>
+            {isOwner && (
+              <span className="flex shrink-0 items-center">
+                <button type="button" aria-label={`Monter ${role.name}`} title="Monter" disabled={sorted[0].id === role.id || movingId !== null} onClick={() => handleMove(role, -1)} className="rounded p-1 text-muted-foreground hover:bg-background hover:text-foreground disabled:opacity-30">
+                  <ChevronUp className="h-4 w-4" />
+                </button>
+                <button type="button" aria-label={`Descendre ${role.name}`} title="Descendre" disabled={sorted[sorted.length - 1].id === role.id || movingId !== null} onClick={() => handleMove(role, 1)} className="rounded p-1 text-muted-foreground hover:bg-background hover:text-foreground disabled:opacity-30">
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </span>
+            )}
           </li>
         ))}
         {sorted.length === 0 && <p className="rounded-md border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">Aucun rôle pour l’instant.</p>}
@@ -222,12 +320,11 @@ function RoleEditor({ server, role, isOwner, onBack, onSaved, onDelete }: { serv
   const [name, setName] = useState(role.name);
   const [color, setColor] = useState(role.color);
   const [permissions, setPermissions] = useState<string[]>(role.permissions);
-  const [isDefault, setIsDefault] = useState(role.is_default);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const dirty = name.trim() !== role.name || color !== role.color || isDefault !== role.is_default || permissions.length !== role.permissions.length || permissions.some(p => !role.permissions.includes(p));
+  const dirty = name.trim() !== role.name || color !== role.color || permissions.length !== role.permissions.length || permissions.some(p => !role.permissions.includes(p));
 
   function togglePermission(key: string) {
     setPermissions(prev => (prev.includes(key) ? prev.filter(p => p !== key) : [...prev, key]));
@@ -245,7 +342,6 @@ function RoleEditor({ server, role, isOwner, onBack, onSaved, onDelete }: { serv
         name: name.trim() !== role.name ? name.trim() : undefined,
         color: color !== role.color ? color : undefined,
         permissions,
-        is_default: isDefault !== role.is_default ? isDefault : undefined,
       });
       onSaved(updated);
       setSuccess(true);
@@ -265,17 +361,12 @@ function RoleEditor({ server, role, isOwner, onBack, onSaved, onDelete }: { serv
       <h1 className="text-xl font-bold">Modifier le rôle</h1>
 
       <label className="mt-6 block text-sm">Nom du rôle
-        <input value={name} onChange={e => setName(e.target.value)} required minLength={1} disabled={!isOwner} className="mt-1 h-10 w-full rounded-md border border-input bg-card px-3 outline-none focus:ring-2 focus:ring-ring disabled:opacity-60" />
+        <input value={name} onChange={e => setName(e.target.value)} required minLength={1} disabled={!isOwner || role.is_default} className="mt-1 h-10 w-full rounded-md border border-input bg-card px-3 outline-none focus:ring-2 focus:ring-ring disabled:opacity-60" />
       </label>
 
       <label className="mt-4 flex items-center gap-3 text-sm">Couleur du rôle
-        <input type="color" value={color} onChange={e => setColor(e.target.value)} disabled={!isOwner} className="h-9 w-14 cursor-pointer rounded border border-input bg-card p-1 disabled:opacity-60" />
+        <input type="color" value={color} onChange={e => setColor(e.target.value)} disabled={!isOwner || role.is_default} className="h-9 w-14 cursor-pointer rounded border border-input bg-card p-1 disabled:opacity-60" />
         <span className="font-mono text-xs text-muted-foreground">{color}</span>
-      </label>
-
-      <label className="mt-4 flex items-center gap-2.5 text-sm">
-        <input type="checkbox" checked={isDefault} onChange={e => setIsDefault(e.target.checked)} disabled={!isOwner} className="h-4 w-4 rounded border-input" />
-        Rôle attribué par défaut aux nouveaux membres
       </label>
 
       <div className="mt-6">
@@ -298,9 +389,9 @@ function RoleEditor({ server, role, isOwner, onBack, onSaved, onDelete }: { serv
 
       {isOwner && (
         <div className="mt-6 flex items-center justify-between gap-3">
-          <button type="button" onClick={onDelete} className="flex h-10 items-center gap-1.5 rounded-md border border-destructive/40 px-4 text-sm font-semibold text-destructive hover:bg-destructive/10">
+          {!role.is_default && <button type="button" onClick={onDelete} className="flex h-10 items-center gap-1.5 rounded-md border border-destructive/40 px-4 text-sm font-semibold text-destructive hover:bg-destructive/10">
             <Trash2 className="h-4 w-4" /> Supprimer ce rôle
-          </button>
+          </button>}
           <button type="submit" disabled={!dirty || busy} className="h-10 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-40">{busy ? "Enregistrement…" : "Enregistrer"}</button>
         </div>
       )}

@@ -155,7 +155,18 @@ pub(crate) async fn create_server(Extension(state): Extension<AppState>, user: C
 
     sqlx::query(
         r#"
-        INSERT INTO "ServerUser" (server_id, user_id, role_id)
+        INSERT INTO "ServerUser" (server_id, user_id)
+        VALUES ($1, $2)
+        "#,
+    )
+    .bind(&server.id)
+    .bind(&user.id)
+    .execute(&mut *transaction)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO "ServerUserRole" (server_id, user_id, role_id)
         VALUES ($1, $2, $3)
         "#,
     )
@@ -349,9 +360,14 @@ async fn load_server_detail(state: &AppState, server_id: &str) -> Result<ServerD
 async fn load_server_members(state: &AppState, server_id: &str, roles: &[ServerRoleRecord]) -> Result<Vec<ServerMemberResponse>> {
     let rows = sqlx::query_as::<_, crate::models::ServerMemberRecord>(
         r#"
-        SELECT server_id, user_id, role_id, joined_at
-        FROM "ServerUser"
-        WHERE server_id = $1
+         SELECT su.server_id, su.user_id,
+             COALESCE(array_agg(sur.role_id ORDER BY sr.position, sr.id) FILTER (WHERE sur.role_id IS NOT NULL), ARRAY[]::integer[]) AS role_ids,
+             su.joined_at
+         FROM "ServerUser" su
+         LEFT JOIN "ServerUserRole" sur ON sur.server_id = su.server_id AND sur.user_id = su.user_id
+         LEFT JOIN "ServerRole" sr ON sr.id = sur.role_id
+         WHERE su.server_id = $1
+         GROUP BY su.server_id, su.user_id, su.joined_at
         ORDER BY joined_at ASC
         "#,
     )
@@ -362,12 +378,12 @@ async fn load_server_members(state: &AppState, server_id: &str, roles: &[ServerR
     let mut members = Vec::with_capacity(rows.len());
     for row in rows {
         let user = load_public_user(state, &row.user_id).await?;
-        let role = row
-            .role_id
-            .and_then(|role_id| roles.iter().find(|role| role.id == role_id).cloned())
-            .map(ServerRoleResponse::from);
+        let member_roles = row.role_ids.iter()
+            .filter_map(|role_id| roles.iter().find(|role| role.id == *role_id).cloned())
+            .map(ServerRoleResponse::from)
+            .collect();
 
-        members.push(ServerMemberResponse {user, role, joined_at: row.joined_at});
+        members.push(ServerMemberResponse {user, roles: member_roles, joined_at: row.joined_at});
     }
     Ok(members)
 }

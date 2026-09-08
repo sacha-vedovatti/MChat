@@ -40,7 +40,7 @@ export type Role = {
 
 export type Member = {
     user: User;
-    role: Role | null;
+    roles: Role[];
     joined_at: string
 }
 export type Message = {

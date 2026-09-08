@@ -26,6 +26,8 @@ export function UserProfileModal({
   onEditProfile?: () => void;
 }) {
   const isSelf = member.user.id === currentUser.id;
+  const visibleRoles = member.roles.filter(role => !role.is_default);
+  const primaryRole = visibleRoles[0];
   const [friendState, setFriendState] = useState<ActionState>("idle");
   const [friendError, setFriendError] = useState("");
   const [blockState, setBlockState] = useState<ActionState>("idle");
@@ -69,7 +71,7 @@ export function UserProfileModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div onClick={e => e.stopPropagation()} className="w-full max-w-sm overflow-hidden rounded-xl border border-border bg-popover shadow-xl">
-        <div className="h-16" style={{ backgroundColor: member.role?.color ?? "var(--secondary)" }} />
+        <div className="h-16" style={{ backgroundColor: primaryRole?.color ?? "var(--secondary)" }} />
         <div className="px-5 pb-5">
           <div className="-mt-10 flex items-end justify-between">
             <div className="rounded-full ring-4 ring-popover"><UserAvatar user={member.user} size={80} /></div>
@@ -81,14 +83,13 @@ export function UserProfileModal({
           <h1 className="mt-3 truncate text-lg font-bold">{member.user.username}</h1>
 
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            {member.role ? (
-              <span className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium">
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: member.role.color }} />
-                {member.role.name}
-              </span>
-            ) : (
-              <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground">Aucun rôle</span>
-            )}
+            {visibleRoles.length > 0 ? (
+              visibleRoles.map(role => <span key={role.id} className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium">
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: role.color }} />
+                {role.name}
+              </span>)
+            ) : ("")
+            }
           </div>
 
           <dl className="mt-4 space-y-2 rounded-lg border border-border bg-card p-3 text-sm">

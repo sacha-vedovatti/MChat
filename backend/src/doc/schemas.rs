@@ -154,13 +154,13 @@ pub struct UpdateRoleBody {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ServerMember {
     pub user: PublicUser,
-    pub role: Option<ServerRole>,
+    pub roles: Vec<ServerRole>,
     pub joined_at: NaiveDateTime
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct UpdateMemberBody {
-    pub role_id: Option<i32>
+    pub role_ids: Vec<i32>
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]

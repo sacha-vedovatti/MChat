@@ -54,13 +54,16 @@ pub async fn load_server_access(state: &AppState, server_id: &str, user_id: &str
             s.owner_id,
             s.name,
             s.created_at,
-            su.role_id AS member_role_id,
-            sr.permissions
+            (
+                SELECT sur.role_id
+                FROM "ServerUserRole" sur
+                JOIN "ServerRole" sr ON sr.id = sur.role_id
+                WHERE sur.server_id = s.id AND sur.user_id = $2
+                ORDER BY sr.position ASC, sr.id ASC
+                LIMIT 1
+            ) AS member_role_id,
+            NULL::"ServerPermissions"[] AS permissions
         FROM "Server" s
-        LEFT JOIN "ServerUser" su
-            ON su.server_id = s.id AND su.user_id = $2
-        LEFT JOIN "ServerRole" sr
-            ON sr.id = su.role_id
         WHERE s.id = $1
         "#,
     )
@@ -70,6 +73,23 @@ pub async fn load_server_access(state: &AppState, server_id: &str, user_id: &str
     .await?
     .ok_or_else(|| AppError::NotFound("server not found".to_string()))?;
 
+    let permissions = sqlx::query_scalar::<_, Option<Vec<ServerPermission>>>(
+        r#"
+        SELECT COALESCE(array_agg(permission), ARRAY[]::"ServerPermissions"[])
+        FROM (
+            SELECT DISTINCT unnest(sr.permissions) AS permission
+            FROM "ServerUserRole" sur
+            JOIN "ServerRole" sr ON sr.id = sur.role_id
+            WHERE sur.server_id = $1 AND sur.user_id = $2
+        ) permissions
+        "#,
+    )
+    .bind(server_id)
+    .bind(user_id)
+    .fetch_one(&state.pool)
+    .await?
+    .unwrap_or_default();
+
     Ok(ServerAccess {
         server: ServerSummary {
             id: row.id.clone(),
@@ -78,7 +98,7 @@ pub async fn load_server_access(state: &AppState, server_id: &str, user_id: &str
             created_at: row.created_at
         },
         member_role_id: row.member_role_id,
-        permissions: row.permissions.unwrap_or_default(),
+        permissions,
         is_owner: row.owner_id == user_id
     })
 }

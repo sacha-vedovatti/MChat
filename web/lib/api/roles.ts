@@ -27,7 +27,6 @@ export type UpdateRoleInput = Partial<{
     color: string;
     permissions: string[];
     position: number;
-    is_default: boolean
 }>;
 
 export function updateRole(serverId: string, roleId: number, input: UpdateRoleInput) {

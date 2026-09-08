@@ -118,7 +118,7 @@ pub struct ServerRoleRecord {
 pub struct ServerMemberRecord {
     pub server_id: String,
     pub user_id: String,
-    pub role_id: Option<i32>,
+    pub role_ids: Vec<i32>,
     pub joined_at: NaiveDateTime
 }
 
@@ -146,7 +146,7 @@ pub struct ServerRoleResponse {
 #[derive(Debug, Clone, Serialize)]
 pub struct ServerMemberResponse {
     pub user: PublicUser,
-    pub role: Option<ServerRoleResponse>,
+    pub roles: Vec<ServerRoleResponse>,
     pub joined_at: NaiveDateTime
 }
 

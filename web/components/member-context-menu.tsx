@@ -8,19 +8,19 @@
 "use client";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { User, MessageCircle, UserPlus, ShieldOff, ShieldCheck, ChevronRight, Check, LogOut, Ban } from "lucide-react";
-import { banMember, kickMember, updateMemberRole } from "../lib/api/members";
+import { banMember, kickMember, updateMemberRoles } from "../lib/api/members";
 import { blockUser, sendFriendRequest } from "../lib/api/social";
 import { hasPermission } from "../lib/permissions";
 import type { Member, Role, Server, User as UserType } from "../lib/types";
 
-export function MemberContextMenu({x, y, member, server, roles, currentUser, currentUserRole, isOwner, onClose, onOpenProfile, onRoleAssigned, onKicked, onBanned }: {
+export function MemberContextMenu({x, y, member, server, roles, currentUser, currentUserRoles, isOwner, onClose, onOpenProfile, onRoleAssigned, onKicked, onBanned }: {
   x: number;
   y: number;
   member: Member;
   server: Server;
   roles: Role[];
   currentUser: UserType;
-  currentUserRole: Role | null;
+  currentUserRoles: Role[];
   isOwner: boolean;
   onClose: () => void;
   onOpenProfile: (member: Member) => void;
@@ -37,9 +37,9 @@ export function MemberContextMenu({x, y, member, server, roles, currentUser, cur
 
   const isSelf = member.user.id === currentUser.id;
   const isTargetOwner = member.user.id === server.owner_id;
-  const canManageRoles = isSelf ? isOwner : !isTargetOwner && (isOwner || hasPermission(currentUserRole, "MANAGE_ROLES"));
-  const canKick = !isSelf && !isTargetOwner && (isOwner || hasPermission(currentUserRole, "KICK_MEMBERS"));
-  const canBan = !isSelf && !isTargetOwner && (isOwner || hasPermission(currentUserRole, "BAN_MEMBERS"));
+  const canManageRoles = isSelf ? isOwner : !isTargetOwner && (isOwner || hasPermission(currentUserRoles, "MANAGE_ROLES"));
+  const canKick = !isSelf && !isTargetOwner && (isOwner || hasPermission(currentUserRoles, "KICK_MEMBERS"));
+  const canBan = !isSelf && !isTargetOwner && (isOwner || hasPermission(currentUserRoles, "BAN_MEMBERS"));
 
   useLayoutEffect(() => {
     const el = menuRef.current;
@@ -89,7 +89,9 @@ export function MemberContextMenu({x, y, member, server, roles, currentUser, cur
     setBusyAction("role");
     setError("");
     try {
-      const updated = await updateMemberRole(server.id, member.user.id, role.id);
+      const assigned = member.roles.some(currentRole => currentRole.id === role.id);
+      const roleIds = assigned ? member.roles.filter(currentRole => currentRole.id !== role.id).map(currentRole => currentRole.id) : [...member.roles.map(currentRole => currentRole.id), role.id];
+      const updated = await updateMemberRoles(server.id, member.user.id, roleIds);
       onRoleAssigned(updated);
       onClose();
     } catch (err) {
@@ -170,7 +172,7 @@ export function MemberContextMenu({x, y, member, server, roles, currentUser, cur
                   <button key={role.id} disabled={busyAction === "role"} onClick={() => handleAssignRole(role)} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent disabled:opacity-50">
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: role.color }} />
                     <span className="truncate">{role.name}</span>
-                    {member.role?.id === role.id && <Check className="ml-auto h-3.5 w-3.5 text-primary" />}
+                    {member.roles.some(currentRole => currentRole.id === role.id) && <Check className="ml-auto h-3.5 w-3.5 text-primary" />}
                   </button>
                 ))}
               </div>

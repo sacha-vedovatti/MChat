@@ -12,14 +12,15 @@ import type { Channel, Member, Message, User } from "../lib/types";
 import { UserAvatar } from "./user-avatar";
 
 function MessageRow({ message, members, currentUser, onDelete, onOpenProfile, onOpenContextMenu }: { message: Message; members: Member[]; currentUser: User; onDelete: (id: string) => void; onOpenProfile: (member: Member) => void; onOpenContextMenu: (member: Member, x: number, y: number) => void }) {
-    const authorMember: Member | undefined = members.find(m => m.user.id === message.sender_id) ?? (message.sender_id === currentUser.id ? { user: currentUser, role: null, joined_at: "" } : undefined);
+    const authorMember: Member | undefined = members.find(m => m.user.id === message.sender_id) ?? (message.sender_id === currentUser.id ? { user: currentUser, roles: [], joined_at: "" } : undefined);
     const author = authorMember?.user;
-    const role = authorMember?.role;
+    const role = authorMember?.roles[0];
 
     function openProfile() {
         if (authorMember)
             onOpenProfile(authorMember);
     }
+
     function openContextMenu(e: React.MouseEvent) {
         e.preventDefault();
         if (authorMember)
