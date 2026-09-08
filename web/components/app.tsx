@@ -9,8 +9,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { useAuth } from "../hooks/use-auth";
-import { getChannels, getMembers, getServers, createChannel, createServer } from "../lib/api/servers";
+import { getChannels, getServers, createChannel, createServer } from "../lib/api/servers";
 import { deleteMessage, getMessages, sendMessage } from "../lib/api/messages";
+import { banMember, getMembers, kickMember } from "@/lib/api/members";
 import type { Channel, Member, Message, Role, Server } from "../lib/types";
 import { LoginScreen } from "./login-screen";
 import { ServerRail } from "./server-rail";
@@ -20,12 +21,16 @@ import { MemberSidebar } from "./member-sidebar";
 import { UserSettingsModal } from "./user-settings";
 import { ServerSettingsModal } from "./server-settings";
 import { ChannelEditModal } from "./channel-settings";
+import { UserProfileModal } from "./user-profile-modal";
+import { MemberContextMenu } from "./member-context-menu";
 
 export function App() {
     const auth = useAuth();
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [serverSettingsOpen, setServerSettingsOpen] = useState(false);
     const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
+    const [profileMember, setProfileMember] = useState<Member | null>(null);
+    const [contextMenu, setContextMenu] = useState<{ member: Member; x: number; y: number } | null>(null);
     const [servers, setServers] = useState<Server[]>([]);
     const [activeServerId, setActiveServerId] = useState<string | null>(null);
     const [channels, setChannels] = useState<Record<string, Channel[]>>({});
@@ -39,6 +44,7 @@ export function App() {
     const activeServer = useMemo(() => servers.find(s => s.id === activeServerId) ?? null, [servers, activeServerId]);
     const activeChannelId = activeServerId ? activeChannelByServer[activeServerId] : undefined;
     const activeChannel = activeServer && activeChannelId ? channels[activeServer.id]?.find(c => c.id === activeChannelId) : undefined;
+    const currentMember = activeServer ? (members[activeServer.id] ?? []).find(m => m.user.id === auth.user?.id) ?? null : null;
 
     useEffect(() => {
         if (!auth.user)
@@ -140,6 +146,26 @@ export function App() {
         setActiveChannelByServer(prev => (prev[activeServer.id] === channelId ? { ...prev, [activeServer.id]: "" } : prev));
     }
 
+    function handleMemberRoleAssigned(updated: Member) {
+        if (!activeServer)
+            return;
+        setMembers(prev => ({ ...prev, [activeServer.id]: (prev[activeServer.id] ?? []).map(m => (m.user.id === updated.user.id ? updated : m)) }));
+    }
+
+    async function handleKickMember(userId: string) {
+        if (!activeServer)
+            return;
+        await kickMember(activeServer.id, userId);
+        setMembers(prev => ({ ...prev, [activeServer.id]: (prev[activeServer.id] ?? []).filter(m => m.user.id !== userId) }));
+    }
+
+    async function handleBanMember(userId: string) {
+        if (!activeServer)
+            return;
+        await banMember(activeServer.id, userId);
+        setMembers(prev => ({ ...prev, [activeServer.id]: (prev[activeServer.id] ?? []).filter(m => m.user.id !== userId) }));
+    }
+
     if (auth.loading)
         return <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">Chargement…</div>
     if (!auth.user)
@@ -164,8 +190,8 @@ export function App() {
                 onOpenServerSettings={() => setServerSettingsOpen(true)}
             />
             {activeChannel ? <>
-                <ChatView channel={activeChannel} messages={messages[activeChannel.id] ?? []} members={members[activeServer.id] ?? []} currentUser={auth.user} onSend={handleSend} onDelete={handleDelete} onToggleMembers={() => setMembersShown(v => !v)} membersShown={membersShown} />
-                {membersShown && <MemberSidebar members={members[activeServer.id] ?? []} />}
+                <ChatView channel={activeChannel} messages={messages[activeChannel.id] ?? []} members={members[activeServer.id] ?? []} currentUser={auth.user} onSend={handleSend} onDelete={handleDelete} onToggleMembers={() => setMembersShown(v => !v)} membersShown={membersShown} onOpenProfile={setProfileMember} onOpenContextMenu={(member, x, y) => setContextMenu({ member, x, y })} />
+                {membersShown && <MemberSidebar members={members[activeServer.id] ?? []} onOpenProfile={setProfileMember} onOpenContextMenu={(member, x, y) => setContextMenu({ member, x, y })} />}
             </> : <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-background px-6 text-center">
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary"><Plus className="h-8 w-8" /></div>
                 <h2 className="text-xl font-semibold">Aucun salon</h2>
@@ -180,5 +206,21 @@ export function App() {
         {settingsOpen && <UserSettingsModal user={auth.user} onClose={() => setSettingsOpen(false)} onUpdated={auth.setUser} onLogout={auth.logout} />}
         {serverSettingsOpen && activeServer && <ServerSettingsModal server={activeServer} roles={roles[activeServer.id] ?? []} isOwner={activeServer.owner_id === auth.user.id} onClose={() => setServerSettingsOpen(false)} onServerUpdated={handleServerUpdated} onServerDeleted={handleServerDeleted} onRolesChanged={next => handleRolesChanged(activeServer.id, next)} />}
         {editingChannel && <ChannelEditModal channel={editingChannel} onClose={() => setEditingChannel(null)} onUpdated={handleChannelUpdated} onDeleted={handleChannelDeleted} />}
+        {profileMember && <UserProfileModal member={profileMember} currentUser={auth.user} onClose={() => setProfileMember(null)} onEditProfile={profileMember.user.id === auth.user.id ? () => { setProfileMember(null); setSettingsOpen(true); } : undefined} />}
+        {contextMenu && activeServer && <MemberContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            member={contextMenu.member}
+            server={activeServer}
+            roles={roles[activeServer.id] ?? []}
+            currentUser={auth.user}
+            currentUserRole={currentMember?.role ?? null}
+            isOwner={activeServer.owner_id === auth.user.id}
+            onClose={() => setContextMenu(null)}
+            onOpenProfile={member => { setContextMenu(null); setProfileMember(member); }}
+            onRoleAssigned={handleMemberRoleAssigned}
+            onKicked={handleKickMember}
+            onBanned={handleBanMember}
+        />}
     </div>
 }

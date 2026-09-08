@@ -20,10 +20,6 @@ export function getChannels(serverId: string) {
     return apiFetch<Channel[]>(`/servers/${serverId}/channels`);
 }
 
-export function getMembers(serverId: string) {
-    return apiFetch<Member[]>(`/servers/${serverId}/members`)
-};
-
 export function createServer(name: string) {
     return apiFetch<Server>("/servers", { method: "POST", body: JSON.stringify({ name })});
 }
