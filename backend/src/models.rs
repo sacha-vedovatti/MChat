@@ -112,6 +112,14 @@ pub struct ServerInvitationResponse {
     pub invite_path: String
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct ServerBanResponse {
+    pub server_id: String,
+    pub user: PublicUser,
+    pub banned_by: PublicUser,
+    pub created_at: NaiveDateTime
+}
+
 impl From<ServerInvitationRecord> for ServerInvitationResponse {
     fn from(value: ServerInvitationRecord) -> Self {
         Self {

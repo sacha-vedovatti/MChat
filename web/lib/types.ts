@@ -68,6 +68,13 @@ export type Invitation = {
     token: string;
 }
 
+export type Banishment = {
+    banned_by: User;
+    created_by: string;
+    server_id: string;
+    user: User;
+}
+
 export type LoginResponse = {
     token: string;
     id: string

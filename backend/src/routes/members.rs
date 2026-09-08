@@ -61,6 +61,22 @@ pub(crate) async fn join_server(Extension(state): Extension<AppState>, user: Cur
         return Err(AppError::Conflict("already a member".to_string()));
     }
 
+    let is_banned = sqlx::query_scalar::<_, bool>(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM "ServerBan"
+            WHERE server_id = $1 AND user_id = $2
+        )
+        "#,
+    )
+    .bind(&server_id)
+    .bind(&user.id)
+    .fetch_one(&state.pool)
+    .await?;
+    if is_banned {
+        return Err(AppError::Forbidden("you are banned from this server".to_string()));
+    }
+
     let default_role = load_server_default_role(&state, &server_id).await?;
     sqlx::query(
         r#"

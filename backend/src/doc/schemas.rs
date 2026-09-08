@@ -109,6 +109,14 @@ pub struct ServerInvitation {
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ServerBan {
+    pub server_id: String,
+    pub user: PublicUser,
+    pub banned_by: PublicUser,
+    pub created_at: NaiveDateTime
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CreateServerBody {
     pub name: String
 }

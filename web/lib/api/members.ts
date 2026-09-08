@@ -5,7 +5,7 @@
 ** Members API Routes
 */
 
-import { Member } from "../types"
+import { Banishment, Member } from "../types"
 import { apiFetch } from "./client"
 
 export function getMembers(serverId: string) {
@@ -25,5 +25,13 @@ export function kickMember(serverId: string, userId: string) {
 }
 
 export function banMember(serverId: string, userId: string) {
-    return apiFetch<void>(`/servers/${serverId}/bans/${userId}`, { method: 'POST' });
+    return apiFetch<Banishment>(`/servers/${serverId}/bans/${userId}`, { method: 'POST' });
+}
+
+export function unbanMember(serverId: string, userId: string) {
+    return apiFetch<Banishment>(`/servers/${serverId}/bans/${userId}`, { method: 'DELETE' });
+}
+
+export function getBannedMembers(serverId: string) {
+    return apiFetch<Banishment[]>(`/servers/${serverId}/bans`, { method: 'GET' });
 }

@@ -9,6 +9,7 @@ use crate::app_state::AppState;
 use axum::Router;
 
 pub mod auth;
+pub mod bans;
 pub mod channels;
 pub mod invitations;
 pub mod members;
@@ -22,6 +23,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .merge(root::router())
         .merge(auth::router())
+        .merge(bans::router())
         .merge(users::router())
         .merge(servers::router())
         .merge(channels::router())

@@ -112,6 +112,22 @@ pub(crate) async fn accept_invitation(Extension(state): Extension<AppState>, use
         return Err(AppError::Conflict("already a member".to_string()));
     }
 
+    let is_banned = sqlx::query_scalar::<_, bool>(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM "ServerBan"
+            WHERE server_id = $1 AND user_id = $2
+        )
+        "#,
+    )
+    .bind(&invitation.server_id)
+    .bind(&user.id)
+    .fetch_one(&mut *transaction)
+    .await?;
+    if is_banned {
+        return Err(AppError::Forbidden("you are banned from this server".to_string()));
+    }
+
     let default_role = sqlx::query_scalar::<_, i32>(
         r#"
         SELECT id
