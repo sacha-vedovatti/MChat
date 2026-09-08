@@ -6,7 +6,7 @@
 */
 
 import { apiFetch } from "./client";
-import type { Channel, Member, Role, Server } from "../types";
+import type { Channel, Invitation, Role, Server } from "../types";
 
 export function getServers() {
     return apiFetch<Array<Server & { channels: Channel[]; users: unknown[]; roles: Role[] }>>("/servers/me");
@@ -47,4 +47,12 @@ export type UpdateChannelInput = {
 
 export function updateChannel(channelId: string, input: UpdateChannelInput) {
     return apiFetch<Channel>(`/channels/${channelId}`, { method: 'PUT', body: JSON.stringify(input) });
+}
+
+export function createInvitation(serverId: string, expires_in_seconds: number) {
+    return apiFetch<Invitation>(`/servers/${serverId}/invites`, { method: 'POST', body: JSON.stringify({ expires_in_seconds })});
+}
+
+export function acceptInvitation(token: string) {
+    return apiFetch<Server>(`/invites/${token}/accept`, { method: 'POST' });
 }

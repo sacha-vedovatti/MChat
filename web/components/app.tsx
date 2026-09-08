@@ -23,11 +23,13 @@ import { ServerSettingsModal } from "./server-settings";
 import { ChannelEditModal } from "./channel-settings";
 import { UserProfileModal } from "./user-profile-modal";
 import { MemberContextMenu } from "./member-context-menu";
+import { InviteModal } from "./invite-modal";
 
 export function App() {
     const auth = useAuth();
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [serverSettingsOpen, setServerSettingsOpen] = useState(false);
+    const [inviteOpen, setInviteOpen] = useState(false);
     const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
     const [profileMember, setProfileMember] = useState<Member | null>(null);
     const [contextMenu, setContextMenu] = useState<{ member: Member; x: number; y: number } | null>(null);
@@ -188,6 +190,7 @@ export function App() {
                 onEditChannel={setEditingChannel}
                 onOpenSettings={() => setSettingsOpen(true)}
                 onOpenServerSettings={() => setServerSettingsOpen(true)}
+                onOpenInvite={() => setInviteOpen(true)}
             />
             {activeChannel ? <>
                 <ChatView channel={activeChannel} messages={messages[activeChannel.id] ?? []} members={members[activeServer.id] ?? []} currentUser={auth.user} onSend={handleSend} onDelete={handleDelete} onToggleMembers={() => setMembersShown(v => !v)} membersShown={membersShown} onOpenProfile={setProfileMember} onOpenContextMenu={(member, x, y) => setContextMenu({ member, x, y })} />
@@ -205,6 +208,7 @@ export function App() {
         </div>}
         {settingsOpen && <UserSettingsModal user={auth.user} onClose={() => setSettingsOpen(false)} onUpdated={auth.setUser} onLogout={auth.logout} />}
         {serverSettingsOpen && activeServer && <ServerSettingsModal server={activeServer} roles={roles[activeServer.id] ?? []} isOwner={activeServer.owner_id === auth.user.id} onClose={() => setServerSettingsOpen(false)} onServerUpdated={handleServerUpdated} onServerDeleted={handleServerDeleted} onRolesChanged={next => handleRolesChanged(activeServer.id, next)} />}
+        {inviteOpen && activeServer && <InviteModal server={activeServer} onClose={() => setInviteOpen(false)} />}
         {editingChannel && <ChannelEditModal channel={editingChannel} onClose={() => setEditingChannel(null)} onUpdated={handleChannelUpdated} onDeleted={handleChannelDeleted} />}
         {profileMember && <UserProfileModal member={profileMember} currentUser={auth.user} onClose={() => setProfileMember(null)} onEditProfile={profileMember.user.id === auth.user.id ? () => { setProfileMember(null); setSettingsOpen(true); } : undefined} />}
         {contextMenu && activeServer && <MemberContextMenu

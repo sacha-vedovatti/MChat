@@ -7,8 +7,8 @@
 
 "use client";
 import { FormEvent, useEffect, useState } from "react";
-import { X, Info, ShieldCheck, ShieldAlert, Check, Plus, Trash2, ChevronLeft, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
-import { deleteServer, updateServer } from "../lib/api/servers";
+import { X, Info, ShieldCheck, ShieldAlert, Check, Plus, Trash2, ChevronLeft, ChevronUp, ChevronDown, GripVertical, Copy, Link } from "lucide-react";
+import { createInvitation, deleteServer, updateServer } from "../lib/api/servers";
 import { PERMISSIONS } from "../lib/permissions";
 import type { Role, Server } from "../lib/types";
 import { createRole, deleteRole, updateRole } from "@/lib/api/roles";
@@ -81,6 +81,10 @@ function OverviewTab({ server, isOwner, onServerUpdated }: { server: Server; isO
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteError, setInviteError] = useState("");
+  const [inviteLink, setInviteLink] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const dirty = name.trim() !== server.name;
 
@@ -102,6 +106,27 @@ function OverviewTab({ server, isOwner, onServerUpdated }: { server: Server; isO
     }
   }
 
+  async function generateInvite() {
+    setInviteBusy(true);
+    setInviteError("");
+    setCopied(false);
+    try {
+      const invitation = await createInvitation(server.id, 24 * 60 * 60);
+      setInviteLink(`${window.location.origin}${invitation.invite_path}`);
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : "Impossible de créer le lien d’invitation");
+    } finally {
+      setInviteBusy(false);
+    }
+  }
+
+  async function copyInvite() {
+    if (!inviteLink)
+      return;
+    await navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+  }
+
   return (
     <form onSubmit={submit}>
       <h1 className="text-xl font-bold">Vue d’ensemble</h1>
@@ -118,6 +143,20 @@ function OverviewTab({ server, isOwner, onServerUpdated }: { server: Server; isO
 
       {error && <p className="mt-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
       {success && !error && <p className="mt-4 flex items-center gap-2 rounded-md bg-primary/10 p-3 text-sm text-primary"><Check className="h-4 w-4" /> Serveur mis à jour.</p>}
+
+      <section className="mt-8 border-t border-border pt-6">
+        <div className="flex items-center gap-2">
+          <Link className="h-4 w-4 text-muted-foreground" />
+          <h2 className="font-semibold">Invitation</h2>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">Crée un lien valable pendant 24 heures pour inviter quelqu’un.</p>
+        {inviteLink && <div className="mt-3 flex gap-2">
+          <input readOnly value={inviteLink} aria-label="Lien d’invitation" className="h-10 min-w-0 flex-1 rounded-md border border-input bg-card px-3 text-sm outline-none" />
+          <button type="button" onClick={copyInvite} aria-label="Copier le lien" title="Copier le lien" className="inline-flex h-10 shrink-0 items-center gap-2 rounded-md border border-border px-3 text-sm hover:bg-accent"><Copy className="h-4 w-4" />{copied ? "Copié" : "Copier"}</button>
+        </div>}
+        {inviteError && <p className="mt-3 rounded-md bg-destructive/10 p-3 text-sm text-destructive">{inviteError}</p>}
+        {isOwner && <button type="button" onClick={generateInvite} disabled={inviteBusy} className="mt-3 inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">{inviteBusy ? "Génération…" : "Générer un lien"}</button>}
+      </section>
 
       {isOwner && (
         <div className="mt-6 flex justify-end gap-3">

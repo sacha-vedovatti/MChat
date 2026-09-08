@@ -43,6 +43,7 @@ export type Member = {
     roles: Role[];
     joined_at: string
 }
+
 export type Message = {
     id: string;
     channel_id: string;
@@ -56,6 +57,15 @@ export type MessagePage = {
     page: number;
     limit: number;
     total: number
+}
+
+export type Invitation = {
+    created_at: string;
+    created_by: string;
+    expires_at: string;
+    invite_path: string;
+    server_id: string;
+    token: string;
 }
 
 export type LoginResponse = {

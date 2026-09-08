@@ -10,6 +10,7 @@ use axum::Router;
 
 pub mod auth;
 pub mod channels;
+pub mod invitations;
 pub mod members;
 pub mod messages;
 pub mod roles;
@@ -24,6 +25,7 @@ pub fn router() -> Router<AppState> {
         .merge(users::router())
         .merge(servers::router())
         .merge(channels::router())
+        .merge(invitations::router())
         .merge(members::router())
         .merge(roles::router())
         .merge(messages::router())

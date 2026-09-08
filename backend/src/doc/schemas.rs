@@ -93,6 +93,22 @@ pub struct ServerSummary {
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CreateInvitationBody {
+    #[schema(example = 86400)]
+    pub expires_in_seconds: Option<i64>
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ServerInvitation {
+    pub token: String,
+    pub server_id: String,
+    pub created_by: String,
+    pub created_at: NaiveDateTime,
+    pub expires_at: NaiveDateTime,
+    pub invite_path: String
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CreateServerBody {
     pub name: String
 }

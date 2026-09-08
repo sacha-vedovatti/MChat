@@ -93,6 +93,38 @@ pub struct ServerSummary {
     pub created_at: NaiveDateTime
 }
 
+#[derive(Debug, Clone, FromRow)]
+pub struct ServerInvitationRecord {
+    pub token: String,
+    pub server_id: String,
+    pub created_by: String,
+    pub created_at: NaiveDateTime,
+    pub expires_at: NaiveDateTime
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ServerInvitationResponse {
+    pub token: String,
+    pub server_id: String,
+    pub created_by: String,
+    pub created_at: NaiveDateTime,
+    pub expires_at: NaiveDateTime,
+    pub invite_path: String
+}
+
+impl From<ServerInvitationRecord> for ServerInvitationResponse {
+    fn from(value: ServerInvitationRecord) -> Self {
+        Self {
+            invite_path: format!("/invite/{}", value.token),
+            token: value.token,
+            server_id: value.server_id,
+            created_by: value.created_by,
+            created_at: value.created_at,
+            expires_at: value.expires_at
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct ChannelRecord {
     pub id: String,

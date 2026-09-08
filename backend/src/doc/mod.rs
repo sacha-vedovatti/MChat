@@ -29,6 +29,7 @@ use utoipa::openapi::security::{HttpBuilder, HttpAuthScheme, SecurityScheme};
         (name = "Channels", description = "Channel management"),
         (name = "Members", description = "Server member management"),
         (name = "Roles", description = "Server role and permission management"),
+        (name = "Invitations", description = "Server invitation management"),
         (name = "Messages", description = "Messaging and message management")
     ),
     paths(
@@ -58,6 +59,8 @@ use utoipa::openapi::security::{HttpBuilder, HttpAuthScheme, SecurityScheme};
         crate::routes::members::join_server,
         crate::routes::members::update_member_role,
         crate::routes::members::kick_member,
+        crate::routes::invitations::create_invitation,
+        crate::routes::invitations::accept_invitation,
         crate::routes::roles::get_roles,
         crate::routes::roles::create_role,
         crate::routes::roles::update_role,
@@ -79,6 +82,8 @@ use utoipa::openapi::security::{HttpBuilder, HttpAuthScheme, SecurityScheme};
             schemas::CreateUserBody,
             schemas::UpdateUserBody,
             schemas::ServerSummary,
+            schemas::CreateInvitationBody,
+            schemas::ServerInvitation,
             schemas::CreateServerBody,
             schemas::UpdateServerBody,
             schemas::ServerDetail,
