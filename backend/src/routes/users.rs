@@ -12,7 +12,7 @@ use crate::{
     models::PublicUser,
 };
 
-use axum::{extract::{Extension, Path}, routing::get, Json, Router};
+use axum::{extract::{Extension, Path, Query}, routing::get, Json, Router};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -32,9 +32,15 @@ pub struct UpdateUserBody {
     pub avatar_url: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct SearchUsersQuery {
+    pub query: String
+}
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/users/me", get(get_me).put(update_me).delete(delete_me))
+        .route("/users/search", get(search_users))
         .route("/users", get(get_users).post(create_user))
         .route("/users/{user_id}", get(get_user).put(update_user).delete(delete_user))
         .route("/user/me", get(get_me).put(update_me).delete(delete_me))
@@ -54,6 +60,30 @@ pub fn router() -> Router<AppState> {
 )]
 pub(crate) async fn get_me(Extension(state): Extension<AppState>, user: CurrentUser) -> Result<Json<PublicUser>> {
     Ok(Json(load_public_user(&state, &user.id).await?))
+}
+
+pub(crate) async fn search_users(Extension(state): Extension<AppState>, user: CurrentUser, Query(query): Query<SearchUsersQuery>) -> Result<Json<Vec<PublicUser>>> {
+    let pattern = format!("%{}%", query.query.trim());
+    let users = sqlx::query_as::<_, PublicUser>(
+        r#"
+        SELECT u.id, u.email, u.username, u.avatar_url
+        FROM "User" u
+        WHERE u.id <> $1
+          AND (u.username ILIKE $2 OR u.email ILIKE $2)
+          AND NOT EXISTS (
+              SELECT 1 FROM "UserBlock" b
+              WHERE (b.blocker_id = $1 AND b.blocked_id = u.id)
+                 OR (b.blocker_id = u.id AND b.blocked_id = $1)
+          )
+        ORDER BY u.username ASC
+        LIMIT 25
+        "#,
+    )
+    .bind(&user.id)
+    .bind(pattern)
+    .fetch_all(&state.pool)
+    .await?;
+    Ok(Json(users))
 }
 
 #[utoipa::path(

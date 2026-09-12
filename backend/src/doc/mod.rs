@@ -31,7 +31,9 @@ use utoipa::openapi::security::{HttpBuilder, HttpAuthScheme, SecurityScheme};
         (name = "Roles", description = "Server role and permission management"),
         (name = "Invitations", description = "Server invitation management"),
         (name = "Bans", description = "Server ban management"),
-        (name = "Messages", description = "Messaging and message management")
+        (name = "Messages", description = "Messaging and message management"),
+        (name = "Friends", description = "Friend requests and friendship management"),
+        (name = "Direct Messages", description = "Direct conversations and messages between friends")
     ),
     paths(
         crate::routes::root::root,
@@ -65,6 +67,9 @@ use utoipa::openapi::security::{HttpBuilder, HttpAuthScheme, SecurityScheme};
         crate::routes::bans::ban_user,
         crate::routes::bans::unban_user,
         crate::routes::bans::list_bans,
+        crate::routes::blocks::list_blocks,
+        crate::routes::blocks::block_user,
+        crate::routes::blocks::unblock_user,
         crate::routes::roles::get_roles,
         crate::routes::roles::create_role,
         crate::routes::roles::update_role,
@@ -72,7 +77,19 @@ use utoipa::openapi::security::{HttpBuilder, HttpAuthScheme, SecurityScheme};
         crate::routes::messages::get_messages,
         crate::routes::messages::create_message,
         crate::routes::messages::update_message,
-        crate::routes::messages::delete_message
+        crate::routes::messages::delete_message,
+        crate::routes::friends::list_friends,
+        crate::routes::friends::list_friend_requests,
+        crate::routes::friends::send_friend_request,
+        crate::routes::friends::accept_friend_request,
+        crate::routes::friends::cancel_friend_request,
+        crate::routes::friends::remove_friend,
+        crate::routes::direct_messages::list_conversations,
+        crate::routes::direct_messages::open_conversation,
+        crate::routes::direct_messages::get_messages,
+        crate::routes::direct_messages::create_message,
+        crate::routes::direct_messages::update_message,
+        crate::routes::direct_messages::delete_message
     ),
     components(
         schemas(
@@ -105,6 +122,18 @@ use utoipa::openapi::security::{HttpBuilder, HttpAuthScheme, SecurityScheme};
             schemas::UpdateMessageBody,
             schemas::PaginationQuery,
             schemas::MessagePageResponse,
+            schemas::FriendshipStatus,
+            schemas::FriendRequestDirection,
+            schemas::CreateFriendRequestBody,
+            schemas::Friendship,
+            schemas::FriendRequest,
+            schemas::Friend,
+            schemas::BlockedUser,
+            schemas::DirectMessage,
+            schemas::DirectConversation,
+            schemas::CreateDirectMessageBody,
+            schemas::UpdateDirectMessageBody,
+            schemas::DirectMessagePageResponse,
             schemas::ErrorResponse
         )
     ),

@@ -9,11 +9,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { User, MessageCircle, UserPlus, ShieldOff, ShieldCheck, ChevronRight, Check, LogOut, Ban } from "lucide-react";
 import { banMember, kickMember, updateMemberRoles } from "../lib/api/members";
-import { blockUser, sendFriendRequest } from "../lib/api/social";
 import { hasPermission } from "../lib/permissions";
 import type { Member, Role, Server, User as UserType } from "../lib/types";
+import { sendFriendRequest } from "@/lib/api/social";
 
-export function MemberContextMenu({x, y, member, server, roles, currentUser, currentUserRoles, isOwner, onClose, onOpenProfile, onRoleAssigned, onKicked, onBanned }: {
+export function MemberContextMenu({x, y, member, server, roles, currentUser, currentUserRoles, isOwner, onClose, onOpenProfile, onRoleAssigned, onKicked, onBanned, onOpenDM, onBlocked }: {
   x: number;
   y: number;
   member: Member;
@@ -27,6 +27,8 @@ export function MemberContextMenu({x, y, member, server, roles, currentUser, cur
   onRoleAssigned: (member: Member) => void;
   onKicked: (userId: string) => void;
   onBanned: (userId: string) => void;
+  onOpenDM: (userId: string) => void;
+  onBlocked: (userId: string) => Promise<void>;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: x, top: y });
@@ -78,7 +80,7 @@ export function MemberContextMenu({x, y, member, server, roles, currentUser, cur
     if (!window.confirm(`Bloquer ${member.user.username} ?`))
       return;
     try {
-      await blockUser(member.user.id);
+      await onBlocked(member.user.id);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible de bloquer");
@@ -140,10 +142,11 @@ export function MemberContextMenu({x, y, member, server, roles, currentUser, cur
 
         <div className="my-1 h-px bg-border" />
 
-        <button disabled title="Bientôt disponible" className={itemClass}>
-          <MessageCircle className="h-4 w-4 text-muted-foreground" /> Message privé
-          <span className="ml-auto rounded bg-secondary px-1.5 py-0.5 text-[9px] font-semibold uppercase text-muted-foreground">Bientôt</span>
-        </button>
+        {!isSelf && (
+          <button onClick={() => { onOpenDM(member.user.id); onClose(); }} className={itemClass}>
+            <MessageCircle className="h-4 w-4 text-muted-foreground" /> Message privé
+          </button>
+        )}
 
         {!isSelf && (
           <button onClick={handleAddFriend} disabled={friendState === "busy" || friendState === "done"} className={itemClass}>

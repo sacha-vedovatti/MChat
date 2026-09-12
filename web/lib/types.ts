@@ -59,6 +59,28 @@ export type MessagePage = {
     total: number
 }
 
+export type Conversation = {
+    created_at: string;
+    id: string;
+    last_message: DirectMessage | null;
+    other_user: User;
+}
+
+export type DirectMessage = {
+    content: string;
+    conversation_id: string;
+    created_at: string;
+    id: string;
+    sender_id: string;
+}
+
+export type DirectMessagePage = {
+    items: DirectMessage[];
+    page: number;
+    limit: number;
+    total: number
+}
+
 export type Invitation = {
     created_at: string;
     created_by: string;
@@ -75,6 +97,18 @@ export type Banishment = {
     user: User;
 }
 
+export type Friend = {
+    friend: User;
+    since: string;
+}
+
+export type FriendRequest = {
+    created_at: string,
+    direction: string;
+    id: string;
+    user: User;
+}
+
 export type LoginResponse = {
     token: string;
     id: string
@@ -82,6 +116,20 @@ export type LoginResponse = {
 
 export type RegisterResponse = {
     token: string
+}
+
+export type FriendResponse = {
+    addressee: User;
+    created_at: string;
+    id: string;
+    requester: User;
+    responded_at: string;
+    status: string;
+}
+
+export type BlockedUser = {
+    user: User;
+    created_at: string;
 }
 
 export type CreateServerInput = {

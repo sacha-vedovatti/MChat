@@ -8,9 +8,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { X, MessageCircle, UserPlus, ShieldOff, Pencil, Check } from "lucide-react";
-import { blockUser, sendFriendRequest } from "../lib/api/social";
 import type { Member, User } from "../lib/types";
 import { UserAvatar } from "./user-avatar";
+import { sendFriendRequest } from "@/lib/api/social";
 
 type ActionState = "idle" | "busy" | "done" | "error";
 
@@ -19,11 +19,15 @@ export function UserProfileModal({
   currentUser,
   onClose,
   onEditProfile,
+  onOpenDM,
+  onBlocked,
 }: {
   member: Member;
   currentUser: User;
   onClose: () => void;
   onEditProfile?: () => void;
+  onOpenDM?: (userId: string) => void;
+  onBlocked?: (userId: string) => Promise<void>;
 }) {
   const isSelf = member.user.id === currentUser.id;
   const visibleRoles = member.roles.filter(role => !role.is_default);
@@ -60,11 +64,13 @@ export function UserProfileModal({
     setBlockState("busy");
     setBlockError("");
     try {
-      await blockUser(member.user.id);
-      setBlockState("done");
+      if (!onBlocked)
+        throw new Error("Action indisponible");
+      await onBlocked(member.user.id);
+      onClose();
     } catch (err) {
       setBlockState("error");
-      setBlockError(err instanceof Error ? err.message : "Impossible de bloquer cet utilisateur");
+      setBlockError(err instanceof Error ? err.message : "Impossible de bloquer");
     }
   }
 
@@ -103,9 +109,12 @@ export function UserProfileModal({
             </button>
           ) : (
             <div className="mt-4 space-y-2">
-              <button disabled title="Bientôt disponible" className="flex h-10 w-full cursor-not-allowed items-center justify-between rounded-md border border-border bg-card px-3 text-sm font-medium text-muted-foreground">
-                <span className="flex items-center gap-2"><MessageCircle className="h-4 w-4" /> Message privé</span>
-                <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase">Bientôt</span>
+              <button
+                onClick={onOpenDM ? () => { onOpenDM(member.user.id); onClose(); } : undefined}
+                disabled={!onOpenDM}
+                className="flex h-10 w-full items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <MessageCircle className="h-4 w-4" /> Message privé
               </button>
 
               <button onClick={handleAddFriend} disabled={friendState === "busy" || friendState === "done"} className="flex h-10 w-full items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium hover:bg-accent disabled:opacity-70">
@@ -114,7 +123,7 @@ export function UserProfileModal({
               {friendState === "error" && <p className="text-xs text-destructive">{friendError}</p>}
 
               <button onClick={handleBlock} disabled={blockState === "busy" || blockState === "done"} className="flex h-10 w-full items-center gap-2 rounded-md border border-destructive/30 bg-card px-3 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-70">
-                {blockState === "done" ? <><Check className="h-4 w-4" /> Utilisateur bloqué</> : <><ShieldOff className="h-4 w-4" /> {blockState === "busy" ? "Blocage…" : "Bloquer"}</>}
+                <ShieldOff className="h-4 w-4" /> {blockState === "busy" ? "Blocage…" : "Bloquer"}
               </button>
               {blockState === "error" && <p className="text-xs text-destructive">{blockError}</p>}
             </div>

@@ -236,3 +236,103 @@ impl From<ServerRoleRecord> for ServerRoleResponse {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, sqlx::Type)]
+#[sqlx(type_name = "FriendshipStatus", rename_all = "UPPERCASE")]
+pub enum FriendshipStatus {
+    PENDING,
+    ACCEPTED
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum FriendRequestDirection {
+    INCOMING,
+    OUTGOING
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct FriendshipRecord {
+    pub id: String,
+    pub requester_id: String,
+    pub addressee_id: String,
+    pub status: FriendshipStatus,
+    pub created_at: NaiveDateTime,
+    pub responded_at: Option<NaiveDateTime>
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct FriendshipResponse {
+    pub id: String,
+    pub status: FriendshipStatus,
+    pub requester: PublicUser,
+    pub addressee: PublicUser,
+    pub created_at: NaiveDateTime,
+    pub responded_at: Option<NaiveDateTime>
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct FriendRequestResponse {
+    pub id: String,
+    pub direction: FriendRequestDirection,
+    pub user: PublicUser,
+    pub created_at: NaiveDateTime
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct FriendResponse {
+    pub friend: PublicUser,
+    pub since: NaiveDateTime
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BlockedUserResponse {
+    pub user: PublicUser,
+    pub created_at: NaiveDateTime
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct DirectConversationRecord {
+    pub id: String,
+    pub user_a_id: String,
+    pub user_b_id: String,
+    pub created_at: NaiveDateTime
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DirectConversationResponse {
+    pub id: String,
+    pub other_user: PublicUser,
+    pub created_at: NaiveDateTime,
+    pub last_message: Option<DirectMessageResponse>
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct DirectMessageRecord {
+    pub id: String,
+    pub conversation_id: String,
+    pub sender_id: String,
+    pub content: String,
+    pub created_at: NaiveDateTime
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DirectMessageResponse {
+    pub id: String,
+    pub conversation_id: String,
+    pub sender_id: String,
+    pub content: String,
+    pub created_at: NaiveDateTime
+}
+
+impl From<DirectMessageRecord> for DirectMessageResponse {
+    fn from(value: DirectMessageRecord) -> Self {
+        Self {
+            id: value.id,
+            conversation_id: value.conversation_id,
+            sender_id: value.sender_id,
+            content: value.content,
+            created_at: value.created_at
+        }
+    }
+}

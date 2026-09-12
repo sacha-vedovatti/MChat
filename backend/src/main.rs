@@ -12,6 +12,7 @@ mod models;
 mod permissions;
 mod routes;
 mod doc;
+mod social;
 
 use crate::app_state::AppState;
 use anyhow::Context;

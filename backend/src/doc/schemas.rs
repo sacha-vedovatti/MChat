@@ -241,3 +241,90 @@ pub struct ErrorResponse {
     #[schema(example = "invalid credentials")]
     pub error: String
 }
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum FriendshipStatus {
+    PENDING,
+    ACCEPTED
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum FriendRequestDirection {
+    INCOMING,
+    OUTGOING
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CreateFriendRequestBody {
+    #[schema(example = "550e8400-e29b-41d4-a716-446655440000")]
+    pub user_id: String
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct Friendship {
+    pub id: String,
+    pub status: FriendshipStatus,
+    pub requester: PublicUser,
+    pub addressee: PublicUser,
+    pub created_at: NaiveDateTime,
+    pub responded_at: Option<NaiveDateTime>
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct FriendRequest {
+    pub id: String,
+    pub direction: FriendRequestDirection,
+    pub user: PublicUser,
+    pub created_at: NaiveDateTime
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct Friend {
+    pub friend: PublicUser,
+    pub since: NaiveDateTime
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct BlockedUser {
+    pub user: PublicUser,
+    pub created_at: NaiveDateTime
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct DirectMessage {
+    pub id: String,
+    pub conversation_id: String,
+    pub sender_id: String,
+    pub content: String,
+    pub created_at: NaiveDateTime
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct DirectConversation {
+    pub id: String,
+    pub other_user: PublicUser,
+    pub created_at: NaiveDateTime,
+    pub last_message: Option<DirectMessage>
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CreateDirectMessageBody {
+    #[schema(example = "Hey, how's it going?")]
+    pub content: String
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct UpdateDirectMessageBody {
+    #[schema(example = "Hey, how's it going? (edited)")]
+    pub content: String
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct DirectMessagePageResponse {
+    pub items: Vec<DirectMessage>,
+    pub page: u32,
+    pub limit: u32,
+    pub total: i64
+}

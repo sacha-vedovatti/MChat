@@ -73,9 +73,15 @@ pub(crate) async fn get_messages(Extension(state): Extension<AppState>, user: Cu
         SELECT COUNT(*)
         FROM "Message"
         WHERE channel_id = $1
+                    AND NOT EXISTS (
+                            SELECT 1 FROM "UserBlock" b
+                            WHERE (b.blocker_id = $2 AND b.blocked_id = "Message".sender_id)
+                                 OR (b.blocked_id = $2 AND b.blocker_id = "Message".sender_id)
+                    )
         "#,
     )
     .bind(&channel_id)
+    .bind(&user.id)
     .fetch_one(&state.pool)
     .await?;
 
@@ -84,11 +90,17 @@ pub(crate) async fn get_messages(Extension(state): Extension<AppState>, user: Cu
         SELECT id, channel_id, sender_id, content, created_at
         FROM "Message"
         WHERE channel_id = $1
+                    AND NOT EXISTS (
+                            SELECT 1 FROM "UserBlock" b
+                            WHERE (b.blocker_id = $2 AND b.blocked_id = "Message".sender_id)
+                                 OR (b.blocked_id = $2 AND b.blocker_id = "Message".sender_id)
+                    )
         ORDER BY created_at DESC, id DESC
-        LIMIT $2 OFFSET $3
+        LIMIT $3 OFFSET $4
         "#,
     )
     .bind(&channel_id)
+    .bind(&user.id)
     .bind(i64::from(limit))
     .bind(i64::from(offset))
     .fetch_all(&state.pool)
